@@ -10,9 +10,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 )
 
 func main() {
@@ -25,12 +27,6 @@ func main() {
 			http.Error(w, "WebSocket upgrade required", http.StatusUpgradeRequired)
 			return
 		}
-		key := r.Header.Get("Sec-WebSocket-Key")
-		if key == "" {
-			http.Error(w, "missing Sec-WebSocket-Key", http.StatusBadRequest)
-			return
-		}
-
 		client, rw, err := w.(http.Hijacker).Hijack()
 		if err != nil { return }
 		defer client.Close()
@@ -42,18 +38,42 @@ func main() {
 		}
 		defer ssh.Close()
 
+		key := r.Header.Get("Sec-WebSocket-Key")
+		if key == "" {
+			// Legacy SSH-WebSocket clients used by the previous installer send
+			// only an HTTP Upgrade preface, then carry raw SSH bytes.  This is
+			// not RFC 6455, but accepting it here keeps those profiles working
+			// without weakening the normal RFC 6455 path below.
+			fmt.Fprint(rw, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n")
+			if err := rw.Flush(); err != nil { return }
+			log.Printf("legacy SSH WebSocket accepted from %s", client.RemoteAddr())
+			relayRaw(rw.Reader, ssh, client)
+			return
+		}
+
 		h := sha1.Sum([]byte(key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
 		fmt.Fprintf(rw, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: %s\r\n\r\n", base64.StdEncoding.EncodeToString(h[:]))
 		if err := rw.Flush(); err != nil { return }
 
+		log.Printf("RFC 6455 SSH WebSocket accepted from %s", client.RemoteAddr())
 		errCh := make(chan error, 2)
 		go func() { errCh <- relayWebSocketToSSH(rw.Reader, ssh) }()
 		go func() { errCh <- relaySSHToWebSocket(ssh, client) }()
-		<-errCh
+		if err := <-errCh; err != nil && err != io.EOF {
+			log.Printf("RFC 6455 SSH WebSocket closed for %s: %v", client.RemoteAddr(), err)
+		}
 	})}
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		panic(err)
 	}
+}
+
+func relayRaw(reader io.Reader, ssh net.Conn, client net.Conn) {
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() { defer wg.Done(); _, _ = io.Copy(ssh, reader); _ = ssh.(*net.TCPConn).CloseWrite() }()
+	go func() { defer wg.Done(); _, _ = io.Copy(client, ssh) }()
+	wg.Wait()
 }
 
 func relayWebSocketToSSH(r *bufio.Reader, ssh net.Conn) error {
