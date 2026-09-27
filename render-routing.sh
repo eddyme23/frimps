@@ -49,8 +49,9 @@ frontend public_tcp_443
     tcp-request content accept if { req.ssl_hello_type 1 }
 $haproxy_extra    default_backend main_tls_router
 
-# Keep non-TLS ports at TCP level. Nginx parses a complete HTTP request and
-# discards the following raw SSH bytes used by legacy payload clients.
+# Keep non-TLS ports at TCP level.  The default route must preserve every byte
+# for legacy SSH-payload clients, while VLESS WebSocket still needs Nginx's
+# WebSocket proxy semantics before it reaches Xray.
 frontend public_plain_tcp
     bind :80
     bind :8080
@@ -92,7 +93,7 @@ backend ssh_payload_gateway
     server ssh_payload_gateway 127.0.0.1:3102
 
 backend vless_ws_encrypted_ntls
-    server vless_ws_encrypted_ntls 127.0.0.1:3107
+    server vless_ws_encrypted_ntls 127.0.0.1:9082
 
 backend vless_hu_encrypted_ntls
     server vless_hu_encrypted_ntls 127.0.0.1:3114
@@ -179,8 +180,23 @@ server {
 EOF
 
 cat > "$state_dir/nginx-encrypted-ntls.conf" <<'EOF'
-# Public 80/8080/8880 are owned by HAProxy in TCP mode so legacy SSH payload
-# streams reach payloadgate unchanged. Nginx has no public listener here.
+# HAProxy owns public 80/8080/8880 so legacy SSH payload streams reach the
+# GF-compatible gateway unchanged.  This private bridge restores the Nginx
+# WebSocket handling required by VLESS encrypted NTLS /vlntls.
+server {
+    listen 127.0.0.1:9082;
+    server_name _;
+
+    location = /vlntls {
+        proxy_pass http://127.0.0.1:3107;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+
+    location / { return 404; }
+}
 EOF
 
 cat > "$state_dir/nginx-ssh-only.conf" <<'EOF'
