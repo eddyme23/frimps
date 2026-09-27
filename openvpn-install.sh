@@ -57,6 +57,7 @@ dh none
 ecdh-curve prime256v1
 tls-crypt /etc/openvpn/tls-crypt.key
 data-ciphers AES-256-GCM:AES-128-GCM
+script-security 2
 auth-user-pass-verify /usr/local/libexec/ssh-xray-websocket-v6-openvpn-auth via-file
 verify-client-cert none
 username-as-common-name
