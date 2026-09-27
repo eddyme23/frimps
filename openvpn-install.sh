@@ -68,6 +68,29 @@ EOF
 sed 's/^local 127.0.0.1$/port 1194/; s/^port 11940$//' /etc/openvpn/server/frimps-tcp.conf | sed 's/proto tcp-server/proto udp/' > /etc/openvpn/server/frimps-udp.conf
 chmod 600 /etc/openvpn/server/frimps-*.conf
 
+# TunnelGuard/OpenVPN3 uses one universal TCP profile; its server page supplies
+# the per-user credentials and chooses TCP, SSL Direct, or SSL Payload.
+cat > /etc/openvpn/client-template.ovpn <<EOF
+client
+dev tun
+proto tcp-client
+remote $domain 1194
+nobind
+persist-key
+persist-tun
+remote-cert-tls server
+auth-user-pass
+auth SHA256
+data-ciphers AES-256-GCM:AES-128-GCM
+<ca>
+$(cat /etc/openvpn/easy-rsa/pki/ca.crt)
+</ca>
+<tls-crypt>
+$(cat /etc/openvpn/tls-crypt.key)
+</tls-crypt>
+EOF
+chmod 600 /etc/openvpn/client-template.ovpn
+
 install -d -m 755 /usr/local/lib/ssh-xray-websocket-v6
 cat > /usr/local/lib/ssh-xray-websocket-v6/openvpn-tcp-gateway.js <<'EOF'
 const net=require('net');

@@ -35,7 +35,7 @@ $(cat /etc/openvpn/tls-crypt.key)
 EOF
     sed 's/^proto udp$/proto tcp-client/; s/ 1194$/ 1194/' "$clients/$name-udp.ovpn" > "$clients/$name-tcp.ovpn"
     cp "$clients/$name-tcp.ovpn" "$clients/$name-tunnelguard.ovpn"
-    chmod 600 "$clients/$name-"*.ovpn; echo "Created $name; profiles: $clients/$name-{udp,tcp}.ovpn" ;;
+    chmod 600 "$clients/$name-"*.ovpn; echo "Created $name; profiles: $clients/$name-{udp,tcp}.ovpn"; echo 'TunnelGuard/OpenVPN3 universal profile: /etc/openvpn/client-template.ovpn' ;;
   renew)
     days="${3:-}"; [[ "$days" =~ ^[1-9][0-9]{0,3}$ ]] || die 'invalid days'; expiry="$(date -u -d "+$days days" +%F)"
     jq -e --arg n "$name" '.[] | select(.name == $n)' "$store" >/dev/null || die 'account not found'
