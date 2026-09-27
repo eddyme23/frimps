@@ -11,7 +11,7 @@ die() { echo "v6 staging: $*" >&2; exit 1; }
 for file in xray-backends.json haproxy-443.cfg nginx-main-tls.conf nginx-encrypted-ntls.conf nginx-ssh-only.conf tlsmux.service payloadgate.service; do
   [[ -s "$state_dir/$file" ]] || die "missing $file; run the render scripts first"
 done
-for bin in xray haproxy nginx go dropbear; do command -v "$bin" >/dev/null 2>&1 || die "install $bin on the test VPS first"; done
+for bin in xray haproxy nginx go dropbear node; do command -v "$bin" >/dev/null 2>&1 || die "install $bin on the test VPS first"; done
 
 "$script_dir/build-tlsmux.sh"
 "$script_dir/build-payloadgate.sh"
@@ -20,11 +20,12 @@ xray run -test -config "$state_dir/xray-backends.json"
 haproxy -c -f "$state_dir/haproxy-443.cfg"
 
 install -d -m 700 "$install_dir"
-install -d -m 755 "$runtime_dir" "$runtime_dir/tlsmux" "$runtime_dir/payloadgate" "$runtime_dir/sshws"
+install -d -m 755 "$runtime_dir" "$runtime_dir/tlsmux" "$runtime_dir/payloadgate" "$runtime_dir/sshws" "$runtime_dir/gfraw"
 install -m 755 "$script_dir"/*.sh "$runtime_dir/"
 install -m 644 "$script_dir/tlsmux/main.go" "$runtime_dir/tlsmux/main.go"
 install -m 644 "$script_dir/payloadgate/main.go" "$runtime_dir/payloadgate/main.go"
 install -m 644 "$script_dir/sshws/main.go" "$runtime_dir/sshws/main.go"
+install -m 644 "$script_dir/gfraw/proxy.js" "$runtime_dir/gfraw/proxy.js"
 ln -sfn "$runtime_dir/menu-v6.sh" /usr/local/bin/ssh-xray-websocket-v6-menu
 # The rendered files already reside in install_dir when the default state
 # directory is used. Copying them onto themselves makes GNU install fail.
@@ -67,6 +68,18 @@ PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
+EOF
+
+cat > /etc/systemd/system/ssh-xray-websocket-v6-gfraw.service <<'EOF'
+[Unit]
+Description=ssh-xray-websocket v6 GF-compatible legacy payload gateway
+After=ssh-xray-websocket-v6-dropbear.service
+Requires=ssh-xray-websocket-v6-dropbear.service
+[Service]
+ExecStart=/usr/bin/node /usr/local/lib/ssh-xray-websocket-v6/gfraw/proxy.js 3104 127.0.0.1 143
+Restart=on-failure
+NoNewPrivileges=true
+PrivateTmp=true
 EOF
 
 cat > /etc/systemd/system/ssh-xray-websocket-v6-xray.service <<EOF

@@ -208,7 +208,7 @@ Description=ssh-xray-websocket v6 SSH payload gateway
 After=network.target
 
 [Service]
-ExecStart=/usr/local/libexec/ssh-xray-websocket-v6-payloadgate -listen 127.0.0.1:3102 -ssh-target 127.0.0.1:143 -ws-target 127.0.0.1:3103
+ExecStart=/usr/local/libexec/ssh-xray-websocket-v6-payloadgate -listen 127.0.0.1:3102 -ssh-target 127.0.0.1:143 -ws-target 127.0.0.1:3103 -legacy-target 127.0.0.1:3104
 Restart=on-failure
 NoNewPrivileges=true
 PrivateTmp=true

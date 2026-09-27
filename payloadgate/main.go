@@ -55,6 +55,7 @@ func main() {
 	listen := flag.String("listen", "127.0.0.1:3102", "payload gateway listener")
 	sshTarget := flag.String("ssh-target", "127.0.0.1:143", "raw SSH target")
 	wsTarget := flag.String("ws-target", "127.0.0.1:3103", "SSH WebSocket target")
+	legacyTarget := flag.String("legacy-target", "127.0.0.1:3104", "GF-compatible legacy payload target")
 	flag.Parse()
 
 	listener, err := net.Listen("tcp", *listen)
@@ -70,6 +71,19 @@ func main() {
 			header, err := readHeader(reader)
 			if err != nil { log.Printf("read header: %v", err); return }
 			lower := strings.ToLower(string(header))
+			if !strings.Contains(lower, "sec-websocket-key:") {
+				backend, err := net.Dial("tcp", *legacyTarget)
+				if err != nil { log.Printf("connect legacy payload backend: %v", err); return }
+				defer backend.Close()
+				_, _ = backend.Write(header)
+				_ = client.SetDeadline(time.Time{})
+				var wg sync.WaitGroup
+				wg.Add(2)
+				go func() { defer wg.Done(); _, _ = io.Copy(backend, reader); _ = backend.(*net.TCPConn).CloseWrite() }()
+				go func() { defer wg.Done(); _, _ = io.Copy(client, backend) }()
+				wg.Wait()
+				return
+			}
 			if strings.Contains(lower, "upgrade: websocket") {
 				backend, err := net.Dial("tcp", *wsTarget)
 				if err != nil { log.Printf("connect websocket backend: %v", err); return }
