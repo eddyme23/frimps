@@ -65,7 +65,7 @@ backend xray_vision
     server xray_vision 127.0.0.1:8444
 
 backend ssh_payload_gateway
-    server ssh_payload_gateway 127.0.0.1:3102
+    server ssh_payload_gateway 127.0.0.1:3104
 
 EOF
 
