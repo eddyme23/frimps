@@ -8,7 +8,8 @@ key_file="${V6_KEY_FILE:-/etc/certificates/main.key}"
 die() { echo "v6 OpenVPN: $*" >&2; exit 1; }
 [[ $EUID -eq 0 ]] || die 'run as root'
 [[ "$domain" =~ ^[A-Za-z0-9.-]+$ ]] || die 'set V6_DOMAIN'
-for command in openvpn easyrsa python3 node stunnel4; do command -v "$command" >/dev/null || die "missing dependency: $command"; done
+for command in openvpn python3 node stunnel4; do command -v "$command" >/dev/null || die "missing dependency: $command"; done
+[[ -x /usr/share/easy-rsa/easyrsa || -n "$(command -v easyrsa 2>/dev/null || true)" ]] || die 'missing dependency: easy-rsa'
 [[ -s "$cert_file" && -s "$key_file" ]] || die 'set V6_CERT_FILE and V6_KEY_FILE to valid TLS files'
 
 install -d -m 700 "$state_dir" /etc/openvpn/easy-rsa /etc/openvpn/server /etc/openvpn/clients
@@ -16,8 +17,8 @@ install -d -m 700 "$state_dir" /etc/openvpn/easy-rsa /etc/openvpn/server /etc/op
 if [[ ! -s /etc/openvpn/easy-rsa/pki/ca.crt ]]; then
   (
     cd /etc/openvpn/easy-rsa
-    EASYRSA_BATCH=1 EASYRSA_REQ_CN='frimps OpenVPN CA' easyrsa build-ca nopass
-    EASYRSA_BATCH=1 easyrsa build-server-full server nopass
+    EASYRSA_BATCH=1 EASYRSA_REQ_CN='frimps OpenVPN CA' ./easyrsa build-ca nopass
+    EASYRSA_BATCH=1 ./easyrsa build-server-full server nopass
     openvpn --genkey secret /etc/openvpn/tls-crypt.key
   )
 fi
