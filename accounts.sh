@@ -4,6 +4,7 @@ set -euo pipefail
 state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
 routes="$state_dir/routes.json"
 keys="$state_dir/vless-encryption.env"
+runtime="$state_dir/runtime.env"
 users_dir="$state_dir/users"
 
 die() { echo "v6 accounts: $*" >&2; exit 1; }
@@ -23,6 +24,10 @@ store="$users_dir/$protocol.json"
 [[ -s "$store" ]] || printf '[]\n' > "$store"
 jq -e 'type == "array"' "$store" >/dev/null || die "invalid account store"
 domain="$(jq -r '.primaryDomain' "$routes")"
+if [[ -s "$runtime" ]]; then
+  # shellcheck disable=SC1090
+  source "$runtime"
+fi
 
 valid_user() { [[ "$1" =~ ^[A-Za-z0-9._-]{1,64}$ ]]; }
 valid_days() { [[ "$1" =~ ^[1-9][0-9]*$ ]]; }
@@ -88,7 +93,7 @@ case "$action" in
         printf 'vless://%s@%s:%s?type=ws&security=none&encryption=%s&host=%s&path=%%2Fvlntls#%s-VLESS-Encrypted-NTLS-%s\n' "$uuid" "$domain" "$port" "$VLESS_NTLS_ENCRYPTION" "$domain" "$user" "$port"
         printf 'vless://%s@%s:%s?type=httpupgrade&security=none&encryption=%s&host=%s&path=%%2Fvlhu#%s-VLESS-Encrypted-NTLS-HTTPUpgrade-%s\n' "$uuid" "$domain" "$port" "$VLESS_NTLS_ENCRYPTION" "$domain" "$user" "$port"
       done
-      vision_domain="${V6_VISION_DOMAIN:-vision.$domain}"
+      vision_domain="${V6_VISION_DOMAIN:-${V6_STORED_VISION_DOMAIN:-vision.$domain}}"
       printf 'vless://%s@%s:443?type=tcp&security=tls&encryption=none&flow=xtls-rprx-vision&sni=%s#%s-VLESS-TLS-Vision\n' "$uuid" "$vision_domain" "$vision_domain" "$user"
       if [[ -s "$state_dir/reality.env" ]]; then
         # shellcheck disable=SC1090
