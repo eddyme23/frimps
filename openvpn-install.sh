@@ -51,7 +51,10 @@ server 10.8.0.0 255.255.255.0
 ca /etc/openvpn/easy-rsa/pki/ca.crt
 cert /etc/openvpn/easy-rsa/pki/issued/server.crt
 key /etc/openvpn/easy-rsa/pki/private/server.key
+dh none
+ecdh-curve prime256v1
 tls-crypt /etc/openvpn/tls-crypt.key
+data-ciphers AES-256-GCM:AES-128-GCM
 auth-user-pass-verify /usr/local/libexec/ssh-xray-websocket-v6-openvpn-auth via-file
 verify-client-cert none
 username-as-common-name
