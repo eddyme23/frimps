@@ -36,5 +36,5 @@ echo
 echo '[review rule]'
 echo 'The managed policy uses only complement ranges for UDP Custom:'
 echo '1-52, 54-442, 444-1193, 1195-3999, 4001-5299, 5301-5999, 50001-65535.'
-echo 'A catch-all UDP DNAT rule must occur after every dedicated UDP exception.'
+echo 'Dedicated direct listeners must have an earlier nat ACCEPT exception so a legacy catch-all DNAT cannot capture them.'
 echo 'This audit does not alter OpenVPN, Hysteria 1, Hysteria 2, or any firewall rule.'

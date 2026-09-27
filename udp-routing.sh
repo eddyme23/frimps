@@ -28,12 +28,13 @@ apply() {
   remove_jump
   iptables -t nat -I PREROUTING 1 -i "$public_if" -p udp -j "$chain"
 
-  # Direct listeners: RETURN means packets keep their original destination.
-  add "$chain" --dport 53 -j RETURN
-  add "$chain" --dport 5300 -j RETURN
-  add "$chain" --dport 443 -j RETURN
-  add "$chain" --dport 1194 -j RETURN
-  add "$chain" --dport 4000 -j RETURN
+  # Direct listeners must ACCEPT in nat/PREROUTING, not RETURN: a RETURN would
+  # continue into a legacy catch-all DNAT rule after this chain.
+  add "$chain" --dport 53 -j ACCEPT
+  add "$chain" --dport 5300 -j ACCEPT
+  add "$chain" --dport 443 -j ACCEPT
+  add "$chain" --dport 1194 -j ACCEPT
+  add "$chain" --dport 4000 -j ACCEPT
   add "$chain" --dport 6000:19999 -j DNAT --to-destination :5667
   add "$chain" --dport 20000:50000 -j DNAT --to-destination :36712
 
