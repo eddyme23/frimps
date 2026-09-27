@@ -8,7 +8,7 @@ die() { echo "v6 test installer: $*" >&2; exit 1; }
 [[ "${EUID}" -eq 0 ]] || die "run as root"
 [[ -n "$domain" ]] || die "set V6_DOMAIN to the primary hostname"
 
-for command in jq xray haproxy nginx go openssl; do
+for command in jq xray haproxy nginx go openssl dropbear; do
   command -v "$command" >/dev/null 2>&1 || die "missing dependency: $command"
 done
 

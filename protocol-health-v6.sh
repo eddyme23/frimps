@@ -24,7 +24,7 @@ done
 
 if [[ "$mode" == '--live' ]]; then
   domain="$(jq -r '.primaryDomain' "$state_dir/routes.json")"
-  for unit in ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-payloadgate; do
+  for unit in ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-payloadgate; do
     check_cmd systemctl is-active --quiet "$unit"
   done
   for port in 443 80 8080 8880 2082 2086; do
