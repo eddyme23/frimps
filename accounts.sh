@@ -106,4 +106,8 @@ case "$action" in
 esac
 
 "$(dirname "$0")/render-backends.sh"
+if systemctl is-active --quiet ssh-xray-websocket-v6-xray; then
+  xray run -test -config "$state_dir/xray-backends.json" >/dev/null
+  systemctl restart ssh-xray-websocket-v6-xray
+fi
 echo "$protocol account $action completed: $user"

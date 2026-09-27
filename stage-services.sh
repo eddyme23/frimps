@@ -85,6 +85,15 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
+install -d -m 755 /etc/letsencrypt/renewal-hooks/deploy
+cat > /etc/letsencrypt/renewal-hooks/deploy/ssh-xray-websocket-v6-reload.sh <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+# tlsmux and the TLS-Vision Xray inbound load certificate files at startup.
+systemctl try-restart ssh-xray-websocket-v6-tlsmux.service
+systemctl try-restart ssh-xray-websocket-v6-xray.service
+EOF
+chmod 755 /etc/letsencrypt/renewal-hooks/deploy/ssh-xray-websocket-v6-reload.sh
 cat > "$state_dir/STAGED.md" <<EOF
 # v6 services staged
 

@@ -21,8 +21,11 @@ if [[ -s "$key_file" ]]; then
 fi
 
 pair="$(xray x25519)"
-private_key="$(sed -n 's/^Private key: //p' <<<"$pair" | head -n 1)"
-public_key="$(sed -n 's/^Public key: //p' <<<"$pair" | head -n 1)"
+# Xray changed these labels from "Private key"/"Public key" to
+# "PrivateKey"/"Password (PublicKey)".  The final whitespace-delimited field
+# is the base64url key in both formats.
+private_key="$(awk '/^(Private key|PrivateKey):/ { print $NF; exit }' <<<"$pair")"
+public_key="$(awk '/^(Public key|Password)/ { print $NF; exit }' <<<"$pair")"
 [[ -n "$private_key" && -n "$public_key" ]] || die "xray x25519 returned unexpected output"
 short_id="$(openssl rand -hex 8)"
 

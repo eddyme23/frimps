@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# The stable command is a symlink in /usr/local/bin, so resolve it before
+# locating the companion account-management scripts.
+script_path="$(readlink -f -- "${BASH_SOURCE[0]}")"
+script_dir="$(cd -- "$(dirname -- "$script_path")" && pwd)"
 state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
 
 pause() { read -r -p 'Press Enter to continue... ' _; }
