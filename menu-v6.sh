@@ -72,6 +72,44 @@ remaining_services_menu() {
   pause
 }
 
+wireguard_menu() {
+  while true; do
+    clear; echo '═══ WIREGUARD MANAGEMENT ═══'
+    select choice in 'Create peer' 'Renew peer' 'Delete peer' 'List peers' 'Show client config' 'Show WireGuard link' 'Back'; do
+      case "$choice" in
+        'Create peer') ask_account; "$script_dir/wireguard-accounts.sh" create "$account" "$validity"; pause ;;
+        'Renew peer') ask_account; "$script_dir/wireguard-accounts.sh" renew "$account" "$validity"; pause ;;
+        'Delete peer') read -r -p 'Username: ' account; "$script_dir/wireguard-accounts.sh" delete "$account"; pause ;;
+        'List peers') "$script_dir/wireguard-accounts.sh" list; pause ;;
+        'Show client config') read -r -p 'Username: ' account; "$script_dir/wireguard-accounts.sh" config "$account"; pause ;;
+        'Show WireGuard link') read -r -p 'Username: ' account; "$script_dir/wireguard-accounts.sh" link "$account"; pause ;;
+        Back) return ;;
+        *) echo 'Choose a listed option.' ;;
+      esac
+      break
+    done
+  done
+}
+
+openvpn_menu() {
+  while true; do
+    clear; echo '═══ OPENVPN MANAGEMENT ═══'
+    select choice in 'Install on test VPS' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show UDP profile' 'Back'; do
+      case "$choice" in
+        'Install on test VPS') V6_DOMAIN="$(jq -r '.primaryDomain' "$state_dir/routes.json")" "$script_dir/openvpn-install.sh"; pause ;;
+        'Create account') ask_account; V6_DOMAIN="$(jq -r '.primaryDomain' "$state_dir/routes.json")" "$script_dir/openvpn-accounts.sh" create "$account" "$validity"; pause ;;
+        'Renew account') ask_account; "$script_dir/openvpn-accounts.sh" renew "$account" "$validity"; pause ;;
+        'Delete account') read -r -p 'Username: ' account; "$script_dir/openvpn-accounts.sh" delete "$account"; pause ;;
+        'List accounts') "$script_dir/openvpn-accounts.sh" list; pause ;;
+        'Show UDP profile') read -r -p 'Username: ' account; "$script_dir/openvpn-accounts.sh" profile "$account"; pause ;;
+        Back) return ;;
+        *) echo 'Choose a listed option.' ;;
+      esac
+      break
+    done
+  done
+}
+
 xray_menu() {
   while true; do
     clear; echo '═══ XRAY MANAGEMENT ═══'
@@ -149,11 +187,11 @@ while true; do
       'SSH management') ssh_menu ;;
       'Xray management') xray_menu ;;
       'Stage remaining-service foundations') remaining_services_menu ;;
-      OpenVPN) not_installed 'OPENVPN MANAGEMENT' ;;
+      OpenVPN) openvpn_menu ;;
       'Hysteria 1') not_installed 'HYSTERIA 1 MANAGEMENT' ;;
       'Hysteria 2') not_installed 'HYSTERIA 2 MANAGEMENT' ;;
       ZiVPN) not_installed 'ZIVPN MANAGEMENT' ;;
-      WireGuard) not_installed 'WIREGUARD MANAGEMENT' ;;
+      WireGuard) wireguard_menu ;;
       'SlowDNS / domain') not_installed 'SLOWDNS / DOMAIN MANAGEMENT' ;;
       'Service status') status_menu ;;
       'Validate v6 state') "$script_dir/validate-v6.sh"; pause ;;
