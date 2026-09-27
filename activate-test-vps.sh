@@ -13,7 +13,11 @@ die() { echo "v6 activation: $*" >&2; exit 1; }
 for command in nginx haproxy systemctl; do command -v "$command" >/dev/null 2>&1 || die "missing $command"; done
 trap 'if [[ "$activated" -eq 0 ]]; then "$script_dir/stop-local-backends.sh" >/dev/null 2>&1 || true; fi' EXIT
 
-"$script_dir/preflight-cutover.sh"
+if [[ "${V6_ALLOW_ACTIVE_V6:-}" == YES ]]; then
+  echo 'Refreshing an explicitly confirmed active v6 deployment.'
+else
+  "$script_dir/preflight-cutover.sh"
+fi
 "$script_dir/start-local-backends.sh"
 
 install -d -m 700 "$backup_dir"
@@ -22,6 +26,13 @@ install -d -m 700 "$backup_dir"
 [[ -f /etc/nginx/conf.d/ssh-xray-websocket-v6-ntls.conf ]] && cp -a /etc/nginx/conf.d/ssh-xray-websocket-v6-ntls.conf "$backup_dir/"
 [[ -f /etc/nginx/conf.d/ssh-xray-websocket-v6-ssh-only.conf ]] && cp -a /etc/nginx/conf.d/ssh-xray-websocket-v6-ssh-only.conf "$backup_dir/"
 [[ -f /etc/nginx/conf.d/ssh-xray-websocket-v6-hash.conf ]] && cp -a /etc/nginx/conf.d/ssh-xray-websocket-v6-hash.conf "$backup_dir/"
+if [[ -e /etc/nginx/sites-enabled/default ]]; then
+  # This fresh VPS is using the packaged welcome site. HAProxy must own the
+  # public non-TLS ports so raw SSH payload bytes are never HTTP-parsed.
+  grep -q 'Welcome to nginx' /etc/nginx/sites-enabled/default || die 'refusing to disable a non-default Nginx site; move its public listener before activation'
+  cp -a /etc/nginx/sites-enabled/default "$backup_dir/nginx-default-site"
+  rm -f /etc/nginx/sites-enabled/default
+fi
 
 install -m 600 "$state_dir/nginx-main-tls.conf" /etc/nginx/conf.d/ssh-xray-websocket-v6-main.conf
 install -m 600 "$state_dir/nginx-encrypted-ntls.conf" /etc/nginx/conf.d/ssh-xray-websocket-v6-ntls.conf

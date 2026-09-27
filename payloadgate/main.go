@@ -84,7 +84,14 @@ func main() {
 				return
 			}
 
-			_, _ = io.WriteString(client, "HTTP/1.1 200 Connection established\r\nConnection: keep-alive\r\n\r\n")
+			// Match the legacy GF proxy behavior for non-WebSocket payloads.
+			// CONNECT payloads expect a 200 tunnel response; GET/PATCH-style
+			// SSH payloads expect a 101 upgrade response before raw SSH starts.
+			if strings.HasPrefix(strings.TrimSpace(strings.ToUpper(string(header))), "CONNECT ") {
+				_, _ = io.WriteString(client, "HTTP/1.1 200 Connection established\r\nConnection: keep-alive\r\n\r\n")
+			} else {
+				_, _ = io.WriteString(client, "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n")
+			}
 			_ = client.SetDeadline(time.Now().Add(30 * time.Second))
 			firstSSH, err := waitForSSH(reader)
 			if err != nil { log.Printf("payload did not yield SSH: %v", err); return }

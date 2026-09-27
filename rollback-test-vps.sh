@@ -24,6 +24,9 @@ fi
 for file in ssh-xray-websocket-v6-main.conf ssh-xray-websocket-v6-ntls.conf ssh-xray-websocket-v6-ssh-only.conf; do
   [[ -f "$backup_dir/$file" ]] && install -m 600 "$backup_dir/$file" "/etc/nginx/conf.d/$file"
 done
+if [[ -e "$backup_dir/nginx-default-site" ]]; then
+  cp -a "$backup_dir/nginx-default-site" /etc/nginx/sites-enabled/default
+fi
 
 nginx -t && systemctl reload-or-restart nginx
 if [[ -f "$backup_dir/haproxy.cfg" ]]; then
