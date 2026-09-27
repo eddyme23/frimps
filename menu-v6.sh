@@ -31,6 +31,9 @@ Hysteria 2       443 UDP
 OpenVPN          1194 TCP/UDP, 8433 TCP
 WireGuard        4000 UDP
 SlowDNS          53, 5300 UDP
+ZiVPN            6000-19999 UDP
+Hysteria 1       20000-50000 UDP
+UDP Custom       remaining UDP only
 EOF
 }
 
@@ -47,11 +50,25 @@ status_menu() {
   clear
   echo '═══ V6 SERVICE STATUS ═══'
   echo
-  for unit in ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-payloadgate ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-gfraw nginx haproxy; do
+  for unit in ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-payloadgate ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-gfraw ssh-xray-websocket-v6-udp-routing nginx haproxy; do
     printf '%-42s %s\n' "$unit" "$(systemctl is-active "$unit" 2>/dev/null || true)"
   done
   echo
   ss -ltn '( sport = :22 or sport = :80 or sport = :443 or sport = :8080 or sport = :8880 or sport = :2082 or sport = :2086 )' 2>/dev/null || true
+  pause
+}
+
+remaining_services_menu() {
+  clear
+  echo '═══ REMAINING SERVICE FOUNDATION ═══'
+  echo
+  echo 'This stages the ordered UDP policy, OpenVPN baseline configurations,'
+  echo 'and a non-destructive WireGuard base configuration. It does not start'
+  echo 'or claim Hysteria, ZiVPN, SlowDNS, or UDP-Custom without reviewed binaries'
+  echo 'and authenticated configurations.'
+  read -r -p 'Stage these foundations now? [y/N] ' reply
+  [[ "$reply" =~ ^[Yy]$ ]] || return
+  V6_DOMAIN="$(jq -r '.primaryDomain' "$state_dir/routes.json")" "$script_dir/install-remaining-services.sh"
   pause
 }
 
@@ -127,10 +144,11 @@ ssh_menu() {
 while true; do
   show_ports
   echo
-  select choice in 'SSH management' 'Xray management' 'OpenVPN' 'Hysteria 1' 'Hysteria 2' 'ZiVPN' 'WireGuard' 'SlowDNS / domain' 'Service status' 'Validate v6 state' 'Exit'; do
+  select choice in 'SSH management' 'Xray management' 'Stage remaining-service foundations' 'OpenVPN' 'Hysteria 1' 'Hysteria 2' 'ZiVPN' 'WireGuard' 'SlowDNS / domain' 'Service status' 'Validate v6 state' 'Exit'; do
     case "$choice" in
       'SSH management') ssh_menu ;;
       'Xray management') xray_menu ;;
+      'Stage remaining-service foundations') remaining_services_menu ;;
       OpenVPN) not_installed 'OPENVPN MANAGEMENT' ;;
       'Hysteria 1') not_installed 'HYSTERIA 1 MANAGEMENT' ;;
       'Hysteria 2') not_installed 'HYSTERIA 2 MANAGEMENT' ;;

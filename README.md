@@ -32,6 +32,10 @@ it touches an existing installation.
   and validation.
 - Persistent REALITY keys and client-safe server information; the REALITY
   private key is never written to generated client output.
+- A staged remaining-service foundation: an idempotent ordered UDP policy,
+  baseline OpenVPN configurations, and non-destructive WireGuard bootstrap.
+  Hysteria, ZiVPN, SlowDNS, and UDP-Custom remain disabled until their reviewed
+  authenticated daemon configurations are supplied and client-tested.
 
 ## What deliberately comes next
 
@@ -54,6 +58,7 @@ sudo ./v6/preflight-cutover.sh
 sudo ./v6/protocol-health-v6.sh --staged
 sudo ./v6/migration-report.sh
 sudo ./v6/udp-routing-audit.sh
+sudo V6_DOMAIN=example.com ./v6/install-remaining-services.sh
 ```
 
 After staging, test the private v6 backends without claiming public ports:

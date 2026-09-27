@@ -30,6 +30,7 @@ check jq -e '.removedProtocols | index("vmess") != null' "$routes"
 check jq -e '.trojan.path == "/trojan" and (.legacyTrojanPaths | length == 0)' "$routes"
 check jq -e '.vless.encryptedNtls | index("ws") != null' "$routes"
 check jq -e '.udpPriority == ["slowdns", "hysteria2", "openvpn", "wireguard", "zivpn", "hysteria1", "udp-custom"]' "$routes"
+check jq -e '.udpCustomRanges == ["1-52", "54-442", "444-1193", "1195-3999", "4001-5299", "5301-5999", "50001-65535"]' "$routes"
 domain="$(jq -r '.primaryDomain' "$routes")"
 
 if [[ -s "$keys" ]]; then
