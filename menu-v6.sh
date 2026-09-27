@@ -75,13 +75,14 @@ remaining_services_menu() {
 wireguard_menu() {
   while true; do
     clear; echo '═══ WIREGUARD MANAGEMENT ═══'
-    select choice in 'Create peer' 'Renew peer' 'Delete peer' 'List peers' 'Show client config' 'Back'; do
+    select choice in 'Create peer' 'Renew peer' 'Delete peer' 'List peers' 'Show client config' 'Show WireGuard link' 'Back'; do
       case "$choice" in
         'Create peer') ask_account; "$script_dir/wireguard-accounts.sh" create "$account" "$validity"; pause ;;
         'Renew peer') ask_account; "$script_dir/wireguard-accounts.sh" renew "$account" "$validity"; pause ;;
         'Delete peer') read -r -p 'Username: ' account; "$script_dir/wireguard-accounts.sh" delete "$account"; pause ;;
         'List peers') "$script_dir/wireguard-accounts.sh" list; pause ;;
         'Show client config') read -r -p 'Username: ' account; "$script_dir/wireguard-accounts.sh" config "$account"; pause ;;
+        'Show WireGuard link') read -r -p 'Username: ' account; "$script_dir/wireguard-accounts.sh" link "$account"; pause ;;
         Back) return ;;
         *) echo 'Choose a listed option.' ;;
       esac

@@ -65,6 +65,18 @@ PersistentKeepalive = 25
 EOF
   chmod 600 "$client_dir/$name.conf"
 }
+wireguard_link() {
+  local name="$1" row private ip server_pub private_enc ip_enc public_enc
+  row="$(jq -c --arg n "$name" '.[] | select(.name == $n)' "$store")"
+  [[ -n "$row" ]] || die 'account not found'
+  private="$(awk -F ' = ' '/^PrivateKey = / {print $2; exit}' "$client_dir/$name.conf")"
+  ip="$(jq -r '.ip' <<<"$row")"
+  server_pub="$(cat "$state_dir/wireguard-server-public.key")"
+  private_enc="$(jq -nr --arg v "$private" '$v|@uri')"
+  ip_enc="$(jq -nr --arg v "$ip/32" '$v|@uri')"
+  public_enc="$(jq -nr --arg v "$server_pub" '$v|@uri')"
+  printf 'wireguard://%s@%s:4000?address=%s&mtu=1420&publickey=%s#Wireguard-%s\n' "$private_enc" "$endpoint" "$ip_enc" "$public_enc" "$name"
+}
 
 init
 action="${1:-}"
@@ -78,7 +90,7 @@ case "$action" in
     rewrite_config "$name" "$public" "$ip" "$expires"
     data="$(jq --arg n "$name" --arg p "$public" --arg ip "$ip" --arg e "$expires" '. + [{name:$n,publicKey:$p,ip:$ip,expiresAt:$e}]' "$store")"
     commit_store "$data"; render_client "$name" "$private" "$ip"; sync_live
-    echo "Created $name ($ip), expires $expires"; echo "Client config: $client_dir/$name.conf" ;;
+    echo "Created $name ($ip), expires $expires"; echo "Client config: $client_dir/$name.conf"; echo 'WireGuard Link:'; wireguard_link "$name" ;;
   renew)
     name="${2:-}"; days="${3:-}"; [[ "$days" =~ ^[1-9][0-9]{0,3}$ ]] || die 'days must be a positive integer'
     expires="$(future_date "$days")" || die 'invalid validity'
@@ -91,7 +103,8 @@ case "$action" in
     remove_peer "$name"; commit_store "$(jq --arg n "$name" 'map(select(.name != $n))' "$store")"; rm -f "$client_dir/$name.conf"; echo "Deleted $name" ;;
   list) jq -r '.[] | [.name,.ip,.expiresAt] | @tsv' "$store" | column -t -N NAME,ADDRESS,EXPIRES ;;
   config) name="${2:-}"; [[ -f "$client_dir/$name.conf" ]] || die 'account/config not found'; cat "$client_dir/$name.conf" ;;
+  link) name="${2:-}"; [[ -f "$client_dir/$name.conf" ]] || die 'account/config not found'; wireguard_link "$name" ;;
   cleanup)
     today="$(date -u +%F)"; jq -r --arg d "$today" '.[] | select(.expiresAt < $d) | .name' "$store" | while read -r name; do [[ -n "$name" ]] && "$0" delete "$name"; done ;;
-  *) die 'usage: wireguard-accounts.sh {create NAME DAYS|renew NAME DAYS|delete NAME|list|config NAME|cleanup}' ;;
+  *) die 'usage: wireguard-accounts.sh {create NAME DAYS|renew NAME DAYS|delete NAME|list|config NAME|link NAME|cleanup}' ;;
 esac
