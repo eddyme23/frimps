@@ -17,6 +17,7 @@ install -d -m 700 "$state_dir" /etc/openvpn/easy-rsa /etc/openvpn/server /etc/op
 if [[ ! -s /etc/openvpn/easy-rsa/pki/ca.crt ]]; then
   (
     cd /etc/openvpn/easy-rsa
+    [[ -d pki ]] || ./easyrsa init-pki
     EASYRSA_BATCH=1 EASYRSA_REQ_CN='frimps OpenVPN CA' ./easyrsa build-ca nopass
     EASYRSA_BATCH=1 ./easyrsa build-server-full server nopass
     openvpn --genkey secret /etc/openvpn/tls-crypt.key
