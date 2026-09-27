@@ -3,8 +3,9 @@ set -euo pipefail
 
 state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
 routes="$state_dir/routes.json"
-cert_file="${V6_CERT_FILE:-/etc/certificates/main.crt}"
-key_file="${V6_KEY_FILE:-/etc/certificates/main.key}"
+runtime="$state_dir/runtime.env"
+cert_file="${V6_CERT_FILE:-}"
+key_file="${V6_KEY_FILE:-}"
 vision_domain="${V6_VISION_DOMAIN:-}"
 reality_sni="${V6_REALITY_SNI:-}"
 
@@ -12,6 +13,7 @@ die() { echo "v6 routing renderer: $*" >&2; exit 1; }
 [[ "${EUID}" -eq 0 ]] || die "run as root"
 command -v jq >/dev/null 2>&1 || die "jq is required"
 [[ -s "$routes" && -s "$state_dir/backends.json" ]] || die "run install-v6.sh and render-backends.sh first"
+if [[ -s "$runtime" ]]; then source "$runtime"; fi
 domain="$(jq -r '.primaryDomain' "$routes")"
 [[ "$domain" != "null" && -n "$domain" ]] || die "missing primary domain"
 if [[ -s "$state_dir/reality.env" ]]; then
@@ -19,13 +21,15 @@ if [[ -s "$state_dir/reality.env" ]]; then
   source "$state_dir/reality.env"
   reality_sni="${reality_sni:-$REALITY_SERVER_NAME}"
 fi
-vision_domain="${vision_domain:-vision.$domain}"
+vision_domain="${vision_domain:-${V6_STORED_VISION_DOMAIN:-vision.$domain}}"
+cert_file="${cert_file:-${V6_STORED_CERT_FILE:-/etc/certificates/main.crt}}"
+key_file="${key_file:-${V6_STORED_KEY_FILE:-/etc/certificates/main.key}}"
 
 haproxy_extra=""
 if [[ -n "$reality_sni" ]]; then
   haproxy_extra+=$'    use_backend xray_reality if { req.ssl_sni -i '"$reality_sni"$' }\n'
 fi
-if [[ -n "$vision_domain" ]]; then
+if [[ -n "$vision_domain" && "$vision_domain" != "$domain" ]]; then
   haproxy_extra+=$'    use_backend xray_vision if { req.ssl_sni -i '"$vision_domain"$' }\n'
 fi
 
@@ -109,6 +113,21 @@ server {
         proxy_set_header Host \$host;
     }
 
+    location = /trtls { return 410; }
+    location = /trntls { return 410; }
+}
+
+# HTTP/1.1 is deliberately separate: WebSocket and Trojan require it, while
+# XHTTP/gRPC are routed through the HTTP/2 listener above.
+server {
+    listen 127.0.0.1:9081;
+    server_name $domain;
+
+    location = / { proxy_pass http://127.0.0.1:3102; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
+    location = /vltls { proxy_pass http://127.0.0.1:3106; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
+    location = /trojan { proxy_pass http://127.0.0.1:3108; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
+    location = /vlhu { proxy_pass http://127.0.0.1:3113; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
+    location = /vless-tcp { proxy_pass http://127.0.0.1:3116; proxy_http_version 1.1; proxy_set_header Host \$host; }
     location = /trtls { return 410; }
     location = /trntls { return 410; }
 }
@@ -197,7 +216,7 @@ Description=ssh-xray-websocket v6 TLS multiplexer
 After=network.target
 
 [Service]
-ExecStart=/usr/local/libexec/ssh-xray-websocket-v6-tlsmux -listen 127.0.0.1:9443 -cert $cert_file -key $key_file -ssh-target 127.0.0.1:143 -http-target 127.0.0.1:9080
+ExecStart=/usr/local/libexec/ssh-xray-websocket-v6-tlsmux -listen 127.0.0.1:9443 -cert $cert_file -key $key_file -ssh-target 127.0.0.1:143 -http1-target 127.0.0.1:9081 -h2-target 127.0.0.1:9080
 Restart=on-failure
 NoNewPrivileges=true
 PrivateTmp=true

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ports=(143 3102 3103 3106 3107 3108 3112 3113 3114 3115 3116 3117 8443 8444 9443)
+ports=(143 3102 3103 3106 3107 3108 3112 3113 3114 3115 3116 3117 8443 8444 9080 9081 9443)
 units=(ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-payloadgate)
 
 [[ "${EUID}" -eq 0 ]] || { echo 'Run as root.' >&2; exit 1; }

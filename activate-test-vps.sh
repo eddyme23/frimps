@@ -21,17 +21,24 @@ install -d -m 700 "$backup_dir"
 [[ -f /etc/nginx/conf.d/ssh-xray-websocket-v6-main.conf ]] && cp -a /etc/nginx/conf.d/ssh-xray-websocket-v6-main.conf "$backup_dir/"
 [[ -f /etc/nginx/conf.d/ssh-xray-websocket-v6-ntls.conf ]] && cp -a /etc/nginx/conf.d/ssh-xray-websocket-v6-ntls.conf "$backup_dir/"
 [[ -f /etc/nginx/conf.d/ssh-xray-websocket-v6-ssh-only.conf ]] && cp -a /etc/nginx/conf.d/ssh-xray-websocket-v6-ssh-only.conf "$backup_dir/"
+[[ -f /etc/nginx/conf.d/ssh-xray-websocket-v6-hash.conf ]] && cp -a /etc/nginx/conf.d/ssh-xray-websocket-v6-hash.conf "$backup_dir/"
 
 install -m 600 "$state_dir/nginx-main-tls.conf" /etc/nginx/conf.d/ssh-xray-websocket-v6-main.conf
 install -m 600 "$state_dir/nginx-encrypted-ntls.conf" /etc/nginx/conf.d/ssh-xray-websocket-v6-ntls.conf
 install -m 600 "$state_dir/nginx-ssh-only.conf" /etc/nginx/conf.d/ssh-xray-websocket-v6-ssh-only.conf
+cat > /etc/nginx/conf.d/ssh-xray-websocket-v6-hash.conf <<'EOF'
+# Needed for the v6 hostname on distributions with a small default hash bucket.
+server_names_hash_bucket_size 64;
+EOF
+chmod 644 /etc/nginx/conf.d/ssh-xray-websocket-v6-hash.conf
 nginx -t
 
 install -m 600 "$state_dir/haproxy-443.cfg" /etc/haproxy/haproxy.cfg
 haproxy -c -f /etc/haproxy/haproxy.cfg
 
 systemctl reload-or-restart nginx
-systemctl enable --now haproxy
+systemctl enable haproxy
+systemctl reload-or-restart haproxy
 
 cat > "$state_dir/ACTIVE-TEST-VPS.md" <<EOF
 # v6 active on test VPS
