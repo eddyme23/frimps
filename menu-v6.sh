@@ -72,6 +72,24 @@ remaining_services_menu() {
   pause
 }
 
+wireguard_menu() {
+  while true; do
+    clear; echo '═══ WIREGUARD MANAGEMENT ═══'
+    select choice in 'Create peer' 'Renew peer' 'Delete peer' 'List peers' 'Show client config' 'Back'; do
+      case "$choice" in
+        'Create peer') ask_account; "$script_dir/wireguard-accounts.sh" create "$account" "$validity"; pause ;;
+        'Renew peer') ask_account; "$script_dir/wireguard-accounts.sh" renew "$account" "$validity"; pause ;;
+        'Delete peer') read -r -p 'Username: ' account; "$script_dir/wireguard-accounts.sh" delete "$account"; pause ;;
+        'List peers') "$script_dir/wireguard-accounts.sh" list; pause ;;
+        'Show client config') read -r -p 'Username: ' account; "$script_dir/wireguard-accounts.sh" config "$account"; pause ;;
+        Back) return ;;
+        *) echo 'Choose a listed option.' ;;
+      esac
+      break
+    done
+  done
+}
+
 xray_menu() {
   while true; do
     clear; echo '═══ XRAY MANAGEMENT ═══'
@@ -153,7 +171,7 @@ while true; do
       'Hysteria 1') not_installed 'HYSTERIA 1 MANAGEMENT' ;;
       'Hysteria 2') not_installed 'HYSTERIA 2 MANAGEMENT' ;;
       ZiVPN) not_installed 'ZIVPN MANAGEMENT' ;;
-      WireGuard) not_installed 'WIREGUARD MANAGEMENT' ;;
+      WireGuard) wireguard_menu ;;
       'SlowDNS / domain') not_installed 'SLOWDNS / DOMAIN MANAGEMENT' ;;
       'Service status') status_menu ;;
       'Validate v6 state') "$script_dir/validate-v6.sh"; pause ;;

@@ -94,6 +94,44 @@ EOF
   printf '%s\n' "$server_pub" > "$state_dir/wireguard-server-public.key"
   chmod 600 /etc/wireguard/wg0.conf "$state_dir/wireguard-server-public.key"
 fi
+install -m 700 "$script_dir/wireguard-accounts.sh" /usr/local/libexec/ssh-xray-websocket-v6-wireguard-accounts
+[[ -f "$state_dir/wireguard-users.json" ]] || printf '[]\n' > "$state_dir/wireguard-users.json"
+chmod 600 "$state_dir/wireguard-users.json"
+cat > /etc/sysctl.d/99-ssh-xray-websocket-v6-wireguard.conf <<'EOF'
+net.ipv4.ip_forward = 1
+EOF
+cat > /etc/systemd/system/ssh-xray-websocket-v6-wireguard-nat.service <<'EOF'
+[Unit]
+Description=ssh-xray-websocket v6 WireGuard forwarding and NAT
+After=network-online.target
+Wants=network-online.target
+Before=wg-quick@wg0.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/ssh-xray-websocket-v6-wireguard-nat apply
+ExecStop=/usr/local/libexec/ssh-xray-websocket-v6-wireguard-nat remove
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+cat > /usr/local/libexec/ssh-xray-websocket-v6-wireguard-nat <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+iface="$(ip -4 route show default | awk '/default/ {print $5; exit}')"
+add() { iptables -C "$@" 2>/dev/null || iptables -A "$@"; }
+del() { while iptables -C "$@" 2>/dev/null; do iptables -D "$@"; done; }
+case "${1:-}" in
+ apply) sysctl -q -p /etc/sysctl.d/99-ssh-xray-websocket-v6-wireguard.conf; add FORWARD -i wg0 -j ACCEPT; add FORWARD -o wg0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT; iptables -t nat -C POSTROUTING -s 10.0.0.0/24 -o "$iface" -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o "$iface" -j MASQUERADE ;;
+ remove) del FORWARD -i wg0 -j ACCEPT; del FORWARD -o wg0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT; while iptables -t nat -C POSTROUTING -s 10.0.0.0/24 -o "$iface" -j MASQUERADE 2>/dev/null; do iptables -t nat -D POSTROUTING -s 10.0.0.0/24 -o "$iface" -j MASQUERADE; done ;;
+ *) exit 2 ;;
+esac
+EOF
+chmod 700 /usr/local/libexec/ssh-xray-websocket-v6-wireguard-nat
+cat > /etc/cron.d/ssh-xray-websocket-v6-wireguard-expiry <<'EOF'
+13 0 * * * root /usr/local/libexec/ssh-xray-websocket-v6-wireguard-accounts cleanup >/dev/null 2>&1
+EOF
 
 # Hysteria/ZiVPN/SlowDNS/UDP-Custom executables and their account formats vary
 # by upstream release. Preserve explicit, validated placeholders instead of
