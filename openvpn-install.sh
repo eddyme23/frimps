@@ -48,6 +48,8 @@ proto tcp-server
 dev tun
 topology subnet
 server 10.8.0.0 255.255.255.0
+push "redirect-gateway def1"
+push "dhcp-option DNS 1.1.1.1"
 ca /etc/openvpn/easy-rsa/pki/ca.crt
 cert /etc/openvpn/easy-rsa/pki/issued/server.crt
 key /etc/openvpn/easy-rsa/pki/private/server.key
@@ -68,7 +70,8 @@ chmod 600 /etc/openvpn/server/frimps-*.conf
 install -d -m 755 /usr/local/lib/ssh-xray-websocket-v6
 cat > /usr/local/lib/ssh-xray-websocket-v6/openvpn-tcp-gateway.js <<'EOF'
 const net=require('net');
-net.createServer(c=>{const u=net.connect(11940,'127.0.0.1');c.pipe(u);u.pipe(c);c.on('error',()=>u.destroy());u.on('error',()=>c.destroy())}).listen(1194,'0.0.0.0');
+const bridge=(c,first)=>{const u=net.connect(11940,'127.0.0.1',()=>{if(first.length)u.write(first);c.pipe(u);u.pipe(c)});c.on('error',()=>u.destroy());u.on('error',()=>c.destroy())};
+net.createServer(c=>{let b=Buffer.alloc(0),timer=setTimeout(()=>c.destroy(),15000);c.once('data',d=>{b=Buffer.concat([b,d]);if(!/^(GET|POST|CONNECT|HEAD|PUT|OPTIONS|PATCH|DELETE|TRACE) /.test(b.toString('ascii',0,Math.min(b.length,16)))){clearTimeout(timer);return bridge(c,b)};const eat=()=>{const n=b.indexOf('\r\n\r\n');if(n<0){c.once('data',d=>{b=Buffer.concat([b,d]);eat()});return}b=b.subarray(n+4);if(/^(GET|POST|CONNECT|HEAD|PUT|OPTIONS|PATCH|DELETE|TRACE) /.test(b.toString('ascii',0,Math.min(b.length,16))))return eat();clearTimeout(timer);bridge(c,b)};eat()})}).listen(1194,'0.0.0.0');
 EOF
 cat > /usr/local/lib/ssh-xray-websocket-v6/openvpn-bshield.js <<'EOF'
 const http=require('http'),net=require('net');
@@ -130,5 +133,29 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 EOF
+cat > /etc/systemd/system/frimps-openvpn-nat.service <<'EOF'
+[Unit]
+Description=frimps OpenVPN forwarding and NAT
+After=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/ssh-xray-websocket-v6-openvpn-nat apply
+ExecStop=/usr/local/libexec/ssh-xray-websocket-v6-openvpn-nat remove
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target
+EOF
+cat > /usr/local/libexec/ssh-xray-websocket-v6-openvpn-nat <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+iface="$(ip -4 route show default | awk '/default/ {print $5;exit}')"
+case "${1:-}" in
+ apply) sysctl -q -w net.ipv4.ip_forward=1; nft delete table ip frimps_v6_ovpn 2>/dev/null||true; nft -f - <<EOF_NFT
+table ip frimps_v6_ovpn { chain forward { type filter hook forward priority filter; policy accept; iifname "tun+" accept; } chain postrouting { type nat hook postrouting priority srcnat; policy accept; ip saddr {10.8.0.0/24,10.9.0.0/24} oifname "$iface" masquerade; } }
+EOF_NFT
+ ;;
+ remove) nft delete table ip frimps_v6_ovpn 2>/dev/null||true;; *) exit 2;; esac
+EOF
+chmod 700 /usr/local/libexec/ssh-xray-websocket-v6-openvpn-nat
 systemctl daemon-reload
 echo 'OpenVPN UDP 1194, TCP 1194, TLS 8433, and /openvpn bridge are installed but not enabled.'
