@@ -28,8 +28,12 @@ command -v xray >/dev/null 2>&1 || { echo "xray is required before generating VL
 command -v jq >/dev/null 2>&1 || { echo "jq is required before generating VLESS Encryption material." >&2; exit 1; }
 
 pair="$(xray vlessenc)"
-decryption="$(jq -r '.decryption // empty' <<<"$pair")"
-encryption="$(jq -r '.encryption // empty' <<<"$pair")"
+# Current Xray releases print two labelled JSON snippets rather than one JSON
+# document.  Parsing the whole output as a single document makes jq fail before
+# either key can be read.  Extract only the two documented fields, tolerating
+# those labels and the separate snippets.
+decryption="$(awk -F'"' '/"decryption"[[:space:]]*:/ { value=$4 } END { print value }' <<<"$pair")"
+encryption="$(awk -F'"' '/"encryption"[[:space:]]*:/ { value=$4 } END { print value }' <<<"$pair")"
 
 if [[ "$decryption" != mlkem768x25519plus.* || "$encryption" != mlkem768x25519plus.* ]]; then
   echo "xray vlessenc returned an unexpected VLESS Encryption pair." >&2

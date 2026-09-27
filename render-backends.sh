@@ -4,6 +4,7 @@ set -euo pipefail
 state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
 routes="$state_dir/routes.json"
 keys="$state_dir/vless-encryption.env"
+runtime="$state_dir/runtime.env"
 users_dir="$state_dir/users"
 output="$state_dir/xray-backends.json"
 backend_map="$state_dir/backends.json"
@@ -15,6 +16,10 @@ command -v jq >/dev/null 2>&1 || die "jq is required"
 
 # shellcheck disable=SC1090
 source "$keys"
+if [[ -s "$runtime" ]]; then
+  # shellcheck disable=SC1090
+  source "$runtime"
+fi
 [[ "${VLESS_NTLS_DECRYPTION:-}" == mlkem768x25519plus.* ]] || die "invalid VLESS NTLS decryption value"
 
 install -d -m 700 "$users_dir"
@@ -27,9 +32,9 @@ vless_clients="$(jq 'map({id:.uuid,email:.name,level:0})' "$users_dir/vless.json
 trojan_clients="$(jq 'map({password:.password,email:.name,level:0})' "$users_dir/trojan.json")"
 vision_clients="$(jq 'map({id:.uuid,email:.name,level:0,flow:"xtls-rprx-vision"})' "$users_dir/vless.json")"
 primary_domain="$(jq -r '.primaryDomain' "$routes")"
-vision_domain="${V6_VISION_DOMAIN:-vision.$primary_domain}"
-cert_file="${V6_CERT_FILE:-/etc/certificates/main.crt}"
-key_file="${V6_KEY_FILE:-/etc/certificates/main.key}"
+vision_domain="${V6_VISION_DOMAIN:-${V6_STORED_VISION_DOMAIN:-vision.$primary_domain}}"
+cert_file="${V6_CERT_FILE:-${V6_STORED_CERT_FILE:-/etc/certificates/main.crt}}"
+key_file="${V6_KEY_FILE:-${V6_STORED_KEY_FILE:-/etc/certificates/main.key}}"
 special_inbounds="$(jq -n --arg visionDomain "$vision_domain" --arg cert "$cert_file" --arg key "$key_file" --argjson clients "$vision_clients" '[
   {tag:"vless-tls-vision",listen:"127.0.0.1",port:8444,protocol:"vless",settings:{clients:$clients,decryption:"none"},streamSettings:{network:"tcp",security:"tls",tlsSettings:{serverName:$visionDomain,alpn:["h2","http/1.1"],certificates:[{certificateFile:$cert,keyFile:$key}]}}}
 ]')"
@@ -56,7 +61,7 @@ jq -n \
       {tag:"vless-httpupgrade-encrypted-ntls", listen:"127.0.0.1", port:3114, protocol:"vless", settings:{clients:$vless,decryption:$decryption}, streamSettings:{network:"httpupgrade",security:"none",httpupgradeSettings:{path:"/vlhu"}}},
       {tag:"vless-grpc-tls", listen:"127.0.0.1", port:3115, protocol:"vless", settings:{clients:$vless,decryption:"none"}, streamSettings:{network:"grpc",security:"none",grpcSettings:{serviceName:"vlgrpc"}}},
       {tag:"vless-tcp-http-tls", listen:"127.0.0.1", port:3116, protocol:"vless", settings:{clients:$vless,decryption:"none"}, streamSettings:{network:"tcp",security:"none",tcpSettings:{header:{type:"http",request:{path:["/vless-tcp"],headers:{Host:[""],"User-Agent":["Mozilla/5.0"]}}}}}},
-      {tag:"vless-tcp-http-encrypted-ntls", listen:"127.0.0.1", port:3117, protocol:"vless", settings:{clients:$vless,decryption:$decryption}, streamSettings:{network:"tcp",security:"none",tcpSettings:{header:{type:"http",request:{path:["/vless-tcp"],headers:{Host:[""]}}}}}
+      {tag:"vless-tcp-http-encrypted-ntls", listen:"127.0.0.1", port:3117, protocol:"vless", settings:{clients:$vless,decryption:$decryption}, streamSettings:{network:"tcp",security:"none",tcpSettings:{header:{type:"http",request:{path:["/vless-tcp"],headers:{Host:[""]}}}}}}
     ],
     outbounds: [{protocol:"freedom",tag:"direct"},{protocol:"blackhole",tag:"blocked"}],
     routing: {rules:[{type:"field",ip:["0.0.0.0/8","10.0.0.0/8","100.64.0.0/10","127.0.0.0/8","169.254.0.0/16","172.16.0.0/12","192.0.0.0/24","192.0.2.0/24","192.168.0.0/16","198.18.0.0/15","198.51.100.0/24","203.0.113.0/24","::1/128","fc00::/7","fe80::/10"],outboundTag:"blocked"}]}

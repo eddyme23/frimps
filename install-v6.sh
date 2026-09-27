@@ -43,6 +43,17 @@ cat > "$state_dir/routes.json" <<EOF
 EOF
 chmod 600 "$state_dir/routes.json"
 
+# Keep the selected TLS material and Vision hostname with the staged state.
+# Account changes re-render the Xray file later, so they must not silently
+# fall back to placeholder certificate paths or a different Vision hostname.
+umask 077
+{
+  printf 'V6_STORED_VISION_DOMAIN=%q\n' "${V6_VISION_DOMAIN:-vision.$domain}"
+  printf 'V6_STORED_CERT_FILE=%q\n' "${V6_CERT_FILE:-/etc/certificates/main.crt}"
+  printf 'V6_STORED_KEY_FILE=%q\n' "${V6_KEY_FILE:-/etc/certificates/main.key}"
+} > "$state_dir/runtime.env"
+chmod 600 "$state_dir/runtime.env"
+
 "$script_dir/generate-vless-ntls-keys.sh"
 
 cat > "$state_dir/ROLLBACK.md" <<EOF

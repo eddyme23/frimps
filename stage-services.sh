@@ -24,11 +24,15 @@ install -m 755 "$script_dir"/*.sh "$runtime_dir/"
 install -m 644 "$script_dir/tlsmux/main.go" "$runtime_dir/tlsmux/main.go"
 install -m 644 "$script_dir/payloadgate/main.go" "$runtime_dir/payloadgate/main.go"
 ln -sfn "$runtime_dir/menu-v6.sh" /usr/local/bin/ssh-xray-websocket-v6-menu
-install -m 600 "$state_dir/xray-backends.json" "$install_dir/xray-backends.json"
-install -m 600 "$state_dir/haproxy-443.cfg" "$install_dir/haproxy-443.cfg"
-install -m 600 "$state_dir/nginx-main-tls.conf" "$install_dir/nginx-main-tls.conf"
-install -m 600 "$state_dir/nginx-encrypted-ntls.conf" "$install_dir/nginx-encrypted-ntls.conf"
-install -m 600 "$state_dir/nginx-ssh-only.conf" "$install_dir/nginx-ssh-only.conf"
+# The rendered files already reside in install_dir when the default state
+# directory is used. Copying them onto themselves makes GNU install fail.
+if [[ "$state_dir" != "$install_dir" ]]; then
+  install -m 600 "$state_dir/xray-backends.json" "$install_dir/xray-backends.json"
+  install -m 600 "$state_dir/haproxy-443.cfg" "$install_dir/haproxy-443.cfg"
+  install -m 600 "$state_dir/nginx-main-tls.conf" "$install_dir/nginx-main-tls.conf"
+  install -m 600 "$state_dir/nginx-encrypted-ntls.conf" "$install_dir/nginx-encrypted-ntls.conf"
+  install -m 600 "$state_dir/nginx-ssh-only.conf" "$install_dir/nginx-ssh-only.conf"
+fi
 install -m 644 "$state_dir/tlsmux.service" /etc/systemd/system/ssh-xray-websocket-v6-tlsmux.service
 install -m 644 "$state_dir/payloadgate.service" /etc/systemd/system/ssh-xray-websocket-v6-payloadgate.service
 
