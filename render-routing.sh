@@ -49,23 +49,6 @@ frontend public_tcp_443
     tcp-request content accept if { req.ssl_hello_type 1 }
 $haproxy_extra    default_backend main_tls_router
 
-frontend public_plain_tcp
-    bind :80
-    bind :8080
-    bind :8880
-    mode tcp
-    tcp-request inspect-delay 2s
-    acl vless_ws req.payload(0,4096) -m reg ^[A-Z]+[[:space:]]+/vlntls([[:space:]?])
-    acl vless_hu req.payload(0,4096) -m reg ^[A-Z]+[[:space:]]+/vlhu([[:space:]?])
-    acl vless_tcp req.payload(0,4096) -m reg ^[A-Z]+[[:space:]]+/vless-tcp([[:space:]?])
-    acl openvpn_ws req.payload(0,4096) -m reg ^[A-Z]+[[:space:]]+/openvpn([[:space:]?])
-    tcp-request content accept if vless_ws
-    tcp-request content accept if vless_hu
-    tcp-request content accept if vless_tcp
-    tcp-request content accept if openvpn_ws
-    use_backend encrypted_ntls_bridge if vless_ws || vless_hu || vless_tcp || openvpn_ws
-    default_backend ssh_payload_gateway
-
 frontend public_ssh_only_tcp
     bind :2082
     bind :2086
@@ -80,12 +63,6 @@ backend xray_reality
 
 backend xray_vision
     server xray_vision 127.0.0.1:8444
-
-backend ssh_payload_gateway
-    server ssh_payload_gateway 127.0.0.1:3102
-
-backend encrypted_ntls_bridge
-    server encrypted_ntls_bridge 127.0.0.1:9082
 
 EOF
 
