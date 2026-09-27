@@ -151,7 +151,12 @@ set -euo pipefail
 iface="$(ip -4 route show default | awk '/default/ {print $5;exit}')"
 case "${1:-}" in
  apply) sysctl -q -w net.ipv4.ip_forward=1; nft delete table ip frimps_v6_ovpn 2>/dev/null||true; nft -f - <<EOF_NFT
-table ip frimps_v6_ovpn { chain forward { type filter hook forward priority filter; policy accept; iifname "tun+" accept; } chain postrouting { type nat hook postrouting priority srcnat; policy accept; ip saddr {10.8.0.0/24,10.9.0.0/24} oifname "$iface" masquerade; } }
+table ip frimps_v6_ovpn {
+ chain postrouting {
+  type nat hook postrouting priority srcnat; policy accept;
+  ip saddr { 10.8.0.0/24, 10.9.0.0/24 } oifname "$iface" masquerade
+ }
+}
 EOF_NFT
  ;;
  remove) nft delete table ip frimps_v6_ovpn 2>/dev/null||true;; *) exit 2;; esac
