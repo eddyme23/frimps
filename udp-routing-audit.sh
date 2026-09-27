@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[[ "${EUID}" -eq 0 ]] || { echo 'Run as root.' >&2; exit 1; }
+
+echo '===== v6 UDP routing audit (read-only) ====='
+echo
+echo '[expected dedicated public UDP routes]'
+cat <<'EOF'
+53, 5300          SlowDNS
+443               Hysteria 2
+1194              OpenVPN
+4000              WireGuard
+6000-19999        ZiVPN public range
+20000-50000       Hysteria 1 public range
+remaining UDP     UDP Custom only after all dedicated rules
+EOF
+echo
+echo '[UDP listeners]'
+ss -lunp || true
+echo
+echo '[nftables rules mentioning UDP, DNAT, or redirect]'
+if command -v nft >/dev/null 2>&1; then
+  nft list ruleset 2>/dev/null | grep -Ei 'udp|dnat|redirect' || true
+else
+  echo 'nft is not installed.'
+fi
+echo
+echo '[iptables NAT rules mentioning UDP]'
+if command -v iptables-save >/dev/null 2>&1; then
+  iptables-save -t nat 2>/dev/null | grep -Ei 'udp|DNAT|REDIRECT' || true
+else
+  echo 'iptables-save is not installed.'
+fi
+echo
+echo '[review rule]'
+echo 'A catch-all UDP DNAT rule must occur after every dedicated UDP exception.'
+echo 'This audit does not alter OpenVPN, Hysteria 1, Hysteria 2, or any firewall rule.'
