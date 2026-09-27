@@ -120,6 +120,23 @@ cat > /usr/local/libexec/ssh-xray-websocket-v6-wireguard-nat <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 iface="$(ip -4 route show default | awk '/default/ {print $5; exit}')"
+if command -v nft >/dev/null 2>&1 && ! command -v iptables >/dev/null 2>&1; then
+  case "${1:-}" in
+    apply)
+      sysctl -q -w net.ipv4.ip_forward=1
+      nft delete table ip frimps_v6_wg 2>/dev/null || true
+      nft -f - <<EOF_NFT
+table ip frimps_v6_wg {
+ chain forward { type filter hook forward priority filter; policy accept; iifname "wg0" accept; oifname "wg0" ct state established,related accept; }
+ chain postrouting { type nat hook postrouting priority srcnat; policy accept; ip saddr 10.0.0.0/24 oifname "$iface" masquerade; }
+}
+EOF_NFT
+      ;;
+    remove) nft delete table ip frimps_v6_wg 2>/dev/null || true ;;
+    *) exit 2 ;;
+  esac
+  exit 0
+fi
 add() { iptables -C "$@" 2>/dev/null || iptables -A "$@"; }
 del() { while iptables -C "$@" 2>/dev/null; do iptables -D "$@"; done; }
 case "${1:-}" in
