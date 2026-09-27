@@ -11,7 +11,7 @@ install -d -m 700 "$state_dir" /etc/hysteria1 /etc/hysteria1/clients
 [[ -f "$state_dir/hysteria1-users.json" ]] || printf '[]\n' > "$state_dir/hysteria1-users.json"
 chmod 600 "$state_dir/hysteria1-users.json"
 install -m 700 "$(dirname "$0")/hysteria1-render.sh" /usr/local/libexec/ssh-xray-websocket-v6-hysteria1-render
-cat > /etc/systemd/system/hysteria1-server.service <<'EOF'
+cat > /etc/systemd/system/hysteria1-server.service <<EOF
 [Unit]
 Description=frimps Hysteria 1 sing-box backend
 After=network-online.target ssh-xray-websocket-v6-udp-routing.service
