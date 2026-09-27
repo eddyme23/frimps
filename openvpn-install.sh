@@ -3,10 +3,13 @@ set -euo pipefail
 
 state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
 domain="${V6_DOMAIN:-}"
+cert_file="${V6_CERT_FILE:-/etc/certificates/main.crt}"
+key_file="${V6_KEY_FILE:-/etc/certificates/main.key}"
 die() { echo "v6 OpenVPN: $*" >&2; exit 1; }
 [[ $EUID -eq 0 ]] || die 'run as root'
 [[ "$domain" =~ ^[A-Za-z0-9.-]+$ ]] || die 'set V6_DOMAIN'
-for command in openvpn easyrsa python3; do command -v "$command" >/dev/null || die "missing dependency: $command"; done
+for command in openvpn easyrsa python3 node stunnel4; do command -v "$command" >/dev/null || die "missing dependency: $command"; done
+[[ -s "$cert_file" && -s "$key_file" ]] || die 'set V6_CERT_FILE and V6_KEY_FILE to valid TLS files'
 
 install -d -m 700 "$state_dir" /etc/openvpn/easy-rsa /etc/openvpn/server /etc/openvpn/clients
 [[ -x /etc/openvpn/easy-rsa/easyrsa ]] || cp -a /usr/share/easy-rsa/. /etc/openvpn/easy-rsa/
@@ -57,6 +60,26 @@ EOF
 sed 's/^local 127.0.0.1$/port 1194/; s/^port 11940$//' /etc/openvpn/server/frimps-tcp.conf | sed 's/proto tcp-server/proto udp/' > /etc/openvpn/server/frimps-udp.conf
 chmod 600 /etc/openvpn/server/frimps-*.conf
 
+install -d -m 755 /usr/local/lib/ssh-xray-websocket-v6
+cat > /usr/local/lib/ssh-xray-websocket-v6/openvpn-tcp-gateway.js <<'EOF'
+const net=require('net');
+net.createServer(c=>{const u=net.connect(11940,'127.0.0.1');c.pipe(u);u.pipe(c);c.on('error',()=>u.destroy());u.on('error',()=>c.destroy())}).listen(1194,'0.0.0.0');
+EOF
+cat > /usr/local/lib/ssh-xray-websocket-v6/openvpn-bshield.js <<'EOF'
+const http=require('http'),net=require('net');
+http.createServer().on('upgrade',(r,s,h)=>{if(r.url!=='/openvpn'){s.destroy();return}const u=net.connect(11940,'127.0.0.1',()=>{s.write('HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n');if(h.length)u.write(h);s.pipe(u);u.pipe(s)});u.on('error',()=>s.destroy())}).listen(10081,'127.0.0.1');
+EOF
+cat > /etc/openvpn/frimps-stunnel.conf <<EOF
+foreground = yes
+pid = /run/frimps-openvpn-stunnel.pid
+cert = $cert_file
+key = $key_file
+[openvpn]
+accept = 0.0.0.0:8433
+connect = 127.0.0.1:1194
+EOF
+chmod 600 /etc/openvpn/frimps-stunnel.conf
+
 for type in tcp udp; do
   cat > "/etc/systemd/system/frimps-openvpn-$type.service" <<EOF
 [Unit]
@@ -69,5 +92,38 @@ Restart=on-failure
 WantedBy=multi-user.target
 EOF
 done
+cat > /etc/systemd/system/frimps-openvpn-gateway.service <<'EOF'
+[Unit]
+Description=frimps OpenVPN public TCP gateway
+After=frimps-openvpn-tcp.service
+Requires=frimps-openvpn-tcp.service
+[Service]
+ExecStart=/usr/bin/node /usr/local/lib/ssh-xray-websocket-v6/openvpn-tcp-gateway.js
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+EOF
+cat > /etc/systemd/system/frimps-openvpn-bshield.service <<'EOF'
+[Unit]
+Description=frimps OpenVPN HTTP upgrade bridge
+After=frimps-openvpn-tcp.service
+Requires=frimps-openvpn-tcp.service
+[Service]
+ExecStart=/usr/bin/node /usr/local/lib/ssh-xray-websocket-v6/openvpn-bshield.js
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+EOF
+cat > /etc/systemd/system/frimps-openvpn-stunnel.service <<'EOF'
+[Unit]
+Description=frimps OpenVPN TLS transport
+After=frimps-openvpn-gateway.service
+Requires=frimps-openvpn-gateway.service
+[Service]
+ExecStart=/usr/bin/stunnel4 /etc/openvpn/frimps-stunnel.conf
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+EOF
 systemctl daemon-reload
-echo 'OpenVPN TCP backend (127.0.0.1:11940) and UDP 1194 are installed, but not enabled.'
+echo 'OpenVPN UDP 1194, TCP 1194, TLS 8433, and /openvpn bridge are installed but not enabled.'

@@ -18,7 +18,7 @@ case "$action" in
     read -rsp 'Password: ' password; echo
     expiry="$(date -u -d "+$days days" +%F)"; hash="$(openssl passwd -6 "$password")"
     commit "$(jq --arg n "$name" --arg h "$hash" --arg e "$expiry" '. + [{name:$n,passwordHash:$h,expiresAt:$e}]' "$store")"
-    cat > "$clients/$name.ovpn" <<EOF
+    cat > "$clients/$name-udp.ovpn" <<EOF
 client
 dev tun
 proto udp
@@ -33,13 +33,14 @@ $(cat /etc/openvpn/easy-rsa/pki/ca.crt)
 $(cat /etc/openvpn/tls-crypt.key)
 </tls-crypt>
 EOF
-    chmod 600 "$clients/$name.ovpn"; echo "Created $name; profile: $clients/$name.ovpn" ;;
+    sed 's/^proto udp$/proto tcp-client/; s/ 1194$/ 1194/' "$clients/$name-udp.ovpn" > "$clients/$name-tcp.ovpn"
+    chmod 600 "$clients/$name-"*.ovpn; echo "Created $name; profiles: $clients/$name-{udp,tcp}.ovpn" ;;
   renew)
     days="${3:-}"; [[ "$days" =~ ^[1-9][0-9]{0,3}$ ]] || die 'invalid days'; expiry="$(date -u -d "+$days days" +%F)"
     jq -e --arg n "$name" '.[] | select(.name == $n)' "$store" >/dev/null || die 'account not found'
     commit "$(jq --arg n "$name" --arg e "$expiry" 'map(if .name == $n then .expiresAt = $e else . end)' "$store")" ;;
-  delete) commit "$(jq --arg n "$name" 'map(select(.name != $n))' "$store")"; rm -f "$clients/$name.ovpn" ;;
+  delete) commit "$(jq --arg n "$name" 'map(select(.name != $n))' "$store")"; rm -f "$clients/$name-"*.ovpn ;;
   list) jq -r '.[] | [.name,.expiresAt] | @tsv' "$store" | column -t -N NAME,EXPIRES ;;
-  profile) cat "$clients/$name.ovpn" ;;
-  *) die 'usage: openvpn-accounts.sh {create NAME DAYS|renew NAME DAYS|delete NAME|list|profile NAME}' ;;
+  profile) cat "$clients/$name-${3:-udp}.ovpn" ;;
+  *) die 'usage: openvpn-accounts.sh {create NAME DAYS|renew NAME DAYS|delete NAME|list|profile NAME [udp|tcp]}' ;;
 esac
