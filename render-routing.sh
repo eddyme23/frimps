@@ -64,6 +64,9 @@ backend xray_reality
 backend xray_vision
     server xray_vision 127.0.0.1:8444
 
+backend ssh_payload_gateway
+    server ssh_payload_gateway 127.0.0.1:3102
+
 EOF
 
 cat > "$state_dir/nginx-main-tls.conf" <<EOF
