@@ -6,6 +6,7 @@ die(){ echo "v6 Hysteria 1: $*" >&2; exit 1; }
 command -v sing-box >/dev/null || die 'install a QUIC-capable sing-box binary first'
 command -v jq >/dev/null || die 'install jq'
 [[ -s "${V6_CERT_FILE:-/etc/certificates/main.crt}" && -s "${V6_KEY_FILE:-/etc/certificates/main.key}" ]] || die 'set V6_CERT_FILE and V6_KEY_FILE'
+sing_box_bin="$(command -v sing-box)"
 install -d -m 700 "$state_dir" /etc/hysteria1 /etc/hysteria1/clients
 [[ -f "$state_dir/hysteria1-users.json" ]] || printf '[]\n' > "$state_dir/hysteria1-users.json"
 chmod 600 "$state_dir/hysteria1-users.json"
@@ -16,7 +17,7 @@ Description=frimps Hysteria 1 sing-box backend
 After=network-online.target ssh-xray-websocket-v6-udp-routing.service
 Requires=ssh-xray-websocket-v6-udp-routing.service
 [Service]
-ExecStart=/usr/bin/sing-box run -c /etc/hysteria1/config.json
+ExecStart=$sing_box_bin run -c /etc/hysteria1/config.json
 Restart=on-failure
 NoNewPrivileges=true
 PrivateTmp=true
