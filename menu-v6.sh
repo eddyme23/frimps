@@ -34,6 +34,43 @@ SlowDNS          53, 5300 UDP
 EOF
 }
 
+not_installed() {
+  clear
+  echo "═══ $1 ═══"
+  echo
+  echo 'This protocol is not installed or managed by v6 yet.'
+  echo 'No accounts, ports, or legacy services were changed.'
+  pause
+}
+
+status_menu() {
+  clear
+  echo '═══ V6 SERVICE STATUS ═══'
+  echo
+  for unit in ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-payloadgate ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-gfraw nginx haproxy; do
+    printf '%-42s %s\n' "$unit" "$(systemctl is-active "$unit" 2>/dev/null || true)"
+  done
+  echo
+  ss -ltn '( sport = :22 or sport = :80 or sport = :443 or sport = :8080 or sport = :8880 or sport = :2082 or sport = :2086 )' 2>/dev/null || true
+  pause
+}
+
+xray_menu() {
+  while true; do
+    clear; echo '═══ XRAY MANAGEMENT ═══'
+    select choice in 'VLESS accounts' 'Trojan accounts' 'REALITY server information' 'Back'; do
+      case "$choice" in
+        'VLESS accounts') vless_menu ;;
+        'Trojan accounts') trojan_menu ;;
+        'REALITY server information') [[ -s "$state_dir/reality-client-info.json" ]] && cat "$state_dir/reality-client-info.json" || echo 'REALITY keys have not been generated.'; pause ;;
+        Back) return ;;
+        *) echo 'Choose a listed option.' ;;
+      esac
+      break
+    done
+  done
+}
+
 vless_menu() {
   while true; do
     clear; echo '═══ VLESS ACCOUNT MANAGEMENT ═══'
@@ -90,14 +127,17 @@ ssh_menu() {
 while true; do
   show_ports
   echo
-  select choice in 'SSH accounts' 'VLESS accounts' 'Trojan accounts' 'REALITY server information' 'Validate v6 state' 'Exit'; do
+  select choice in 'SSH management' 'Xray management' 'OpenVPN' 'Hysteria 1' 'Hysteria 2' 'ZiVPN' 'WireGuard' 'SlowDNS / domain' 'Service status' 'Validate v6 state' 'Exit'; do
     case "$choice" in
-      'SSH accounts') ssh_menu ;;
-      'VLESS accounts') vless_menu ;;
-      'Trojan accounts') trojan_menu ;;
-      'REALITY server information')
-        [[ -s "$state_dir/reality-client-info.json" ]] && cat "$state_dir/reality-client-info.json" || echo 'REALITY keys have not been generated.'
-        pause ;;
+      'SSH management') ssh_menu ;;
+      'Xray management') xray_menu ;;
+      OpenVPN) not_installed 'OPENVPN MANAGEMENT' ;;
+      'Hysteria 1') not_installed 'HYSTERIA 1 MANAGEMENT' ;;
+      'Hysteria 2') not_installed 'HYSTERIA 2 MANAGEMENT' ;;
+      ZiVPN) not_installed 'ZIVPN MANAGEMENT' ;;
+      WireGuard) not_installed 'WIREGUARD MANAGEMENT' ;;
+      'SlowDNS / domain') not_installed 'SLOWDNS / DOMAIN MANAGEMENT' ;;
+      'Service status') status_menu ;;
       'Validate v6 state') "$script_dir/validate-v6.sh"; pause ;;
       Exit) exit 0 ;;
       *) echo 'Choose a listed option.' ;;
