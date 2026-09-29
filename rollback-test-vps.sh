@@ -32,6 +32,6 @@ nginx -t && systemctl reload-or-restart nginx
 if [[ -f "$backup_dir/haproxy.cfg" ]]; then
   haproxy -c -f /etc/haproxy/haproxy.cfg && systemctl start haproxy
 fi
-"$script_dir/stop-local-backends.sh"
+V6_CONFIRM_STOP_BACKENDS=YES "$script_dir/stop-local-backends.sh"
 mv "$active_file" "$state_dir/ROLLED-BACK-$(date -u +%Y%m%dT%H%M%SZ).md"
 echo "v6 test-VPS proxy configuration was rolled back from $backup_dir"

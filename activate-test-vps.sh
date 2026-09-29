@@ -11,7 +11,7 @@ die() { echo "v6 activation: $*" >&2; exit 1; }
 [[ "${V6_CONFIRM_TEST_VPS:-}" == YES ]] || die "set V6_CONFIRM_TEST_VPS=YES; this is test-VPS activation only"
 [[ -s "$state_dir/STAGED.md" ]] || die "run stage-services.sh first"
 for command in nginx haproxy systemctl; do command -v "$command" >/dev/null 2>&1 || die "missing $command"; done
-trap 'if [[ "$activated" -eq 0 ]]; then "$script_dir/stop-local-backends.sh" >/dev/null 2>&1 || true; fi' EXIT
+trap 'if [[ "$activated" -eq 0 ]]; then V6_CONFIRM_STOP_BACKENDS=YES "$script_dir/stop-local-backends.sh" >/dev/null 2>&1 || true; fi' EXIT
 
 if [[ "${V6_ALLOW_ACTIVE_V6:-}" == YES ]]; then
   echo 'Refreshing an explicitly confirmed active v6 deployment.'
