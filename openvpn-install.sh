@@ -94,12 +94,14 @@ chmod 600 /etc/openvpn/client-template.ovpn
 install -d -m 755 /usr/local/lib/ssh-xray-websocket-v6
 cat > /usr/local/lib/ssh-xray-websocket-v6/openvpn-tcp-gateway.js <<'EOF'
 const net=require('net');
-const bridge=(c,first)=>{const u=net.connect(11940,'127.0.0.1',()=>{if(first.length)u.write(first);c.pipe(u);u.pipe(c)});c.on('error',()=>u.destroy());u.on('error',()=>c.destroy())};
-net.createServer(c=>{let b=Buffer.alloc(0),timer=setTimeout(()=>c.destroy(),15000);c.once('data',d=>{b=Buffer.concat([b,d]);if(!/^(GET|POST|CONNECT|HEAD|PUT|OPTIONS|PATCH|DELETE|TRACE) /.test(b.toString('ascii',0,Math.min(b.length,16)))){clearTimeout(timer);return bridge(c,b)};const eat=()=>{const n=b.indexOf('\r\n\r\n');if(n<0){c.once('data',d=>{b=Buffer.concat([b,d]);eat()});return}b=b.subarray(n+4);if(/^(GET|POST|CONNECT|HEAD|PUT|OPTIONS|PATCH|DELETE|TRACE) /.test(b.toString('ascii',0,Math.min(b.length,16))))return eat();clearTimeout(timer);bridge(c,b)};eat()})}).listen(1194,'0.0.0.0');
+const close=s=>{if(s&&!s.destroyed)s.destroy()};
+const bridge=(c,first)=>{const u=net.connect(11940,'127.0.0.1',()=>{if(first.length)u.write(first);c.pipe(u);u.pipe(c)});c.on('error',()=>close(u));c.on('close',()=>close(u));u.on('error',()=>close(c));u.on('close',()=>close(c))};
+net.createServer(c=>{c.on('error',()=>{});let b=Buffer.alloc(0),timer=setTimeout(()=>close(c),15000);c.once('data',d=>{b=Buffer.concat([b,d]);if(!/^(GET|POST|CONNECT|HEAD|PUT|OPTIONS|PATCH|DELETE|TRACE) /.test(b.toString('ascii',0,Math.min(b.length,16)))){clearTimeout(timer);return bridge(c,b)};const eat=()=>{const n=b.indexOf('\r\n\r\n');if(n<0){c.once('data',d=>{b=Buffer.concat([b,d]);eat()});return}b=b.subarray(n+4);if(/^(GET|POST|CONNECT|HEAD|PUT|OPTIONS|PATCH|DELETE|TRACE) /.test(b.toString('ascii',0,Math.min(b.length,16))))return eat();clearTimeout(timer);bridge(c,b)};eat()})}).on('error',()=>{}).listen(1194,'0.0.0.0');
 EOF
 cat > /usr/local/lib/ssh-xray-websocket-v6/openvpn-bshield.js <<'EOF'
 const http=require('http'),net=require('net');
-http.createServer().on('upgrade',(r,s,h)=>{if(r.url!=='/openvpn'){s.destroy();return}const u=net.connect(11940,'127.0.0.1',()=>{s.write('HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n');if(h.length)u.write(h);s.pipe(u);u.pipe(s)});u.on('error',()=>s.destroy())}).listen(10081,'127.0.0.1');
+const close=s=>{if(s&&!s.destroyed)s.destroy()};
+http.createServer().on('upgrade',(r,s,h)=>{s.on('error',()=>{});if(r.url!=='/openvpn'){close(s);return}const u=net.connect(11940,'127.0.0.1',()=>{s.write('HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n');if(h.length)u.write(h);s.pipe(u);u.pipe(s)});s.on('close',()=>close(u));u.on('error',()=>close(s));u.on('close',()=>close(s))}).on('clientError',(_,s)=>close(s)).listen(10081,'127.0.0.1');
 EOF
 cat > /etc/openvpn/frimps-stunnel.conf <<EOF
 foreground = yes
