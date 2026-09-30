@@ -21,8 +21,8 @@ restart() {
     xray) units='ssh-xray-websocket-v6-xray nginx haproxy' ;;
     udp) units='ssh-xray-websocket-v6-udp-routing frimps-slowdns hysteria1-server hysteria2-server zivpn frimps-badvpn frimps-udp-custom' ;;
     openvpn) units='frimps-openvpn-nat frimps-openvpn-udp frimps-openvpn-tcp frimps-openvpn-gateway frimps-openvpn-stunnel frimps-openvpn-bshield' ;;
-    wireguard) units='wg-quick@wg0' ;;
-    all) units='ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-payloadgate ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-gfraw ssh-xray-websocket-v6-xray frimps-slowdns hysteria1-server hysteria2-server zivpn frimps-badvpn frimps-udp-custom frimps-openvpn-nat frimps-openvpn-udp frimps-openvpn-tcp frimps-openvpn-gateway frimps-openvpn-stunnel frimps-openvpn-bshield wg-quick@wg0 nginx haproxy' ;;
+    wireguard) units='ssh-xray-websocket-v6-wireguard-nat wg-quick@wg0' ;;
+    all) units='ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-payloadgate ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-gfraw ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-udp-routing ssh-xray-websocket-v6-wireguard-nat frimps-slowdns hysteria1-server hysteria2-server zivpn frimps-badvpn frimps-udp-custom frimps-openvpn-nat frimps-openvpn-udp frimps-openvpn-tcp frimps-openvpn-gateway frimps-openvpn-stunnel frimps-openvpn-bshield wg-quick@wg0 nginx haproxy' ;;
     *) die 'usage: maintenance-v6.sh restart {ssh|xray|udp|openvpn|wireguard|all}' ;;
   esac
   for unit in $units; do

@@ -93,15 +93,23 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
   nodejs npm golang-go wireguard-tools python3 \
   certbot python3-certbot-dns-cloudflare
 
+download_release_asset() {
+  local owner="$1" repo="$2" asset="$3" destination="$4" meta url digest actual
+  meta="$(mktemp)"; trap 'rm -f "$meta"' RETURN
+  curl -fsSL --retry 3 "https://api.github.com/repos/$owner/$repo/releases/latest" -o "$meta"
+  url="$(jq -r --arg asset "$asset" '.assets[] | select(.name == $asset) | .browser_download_url' "$meta")"
+  digest="$(jq -r --arg asset "$asset" '.assets[] | select(.name == $asset) | .digest // empty' "$meta" | sed 's/^sha256://')"
+  [[ "$url" == https://* && "$digest" =~ ^[a-fA-F0-9]{64}$ ]] || die "verified release asset is unavailable: $owner/$repo/$asset"
+  curl -fL --retry 3 -o "$destination" "$url"
+  actual="$(sha256sum "$destination" | awk '{print $1}')"
+  [[ "$actual" == "$digest" ]] || die "SHA-256 verification failed for $asset"
+}
+
 install_xray() {
   command -v xray >/dev/null 2>&1 && return
-  note 'Installing Xray core'
-  local temp tag url
-  temp="$(mktemp -d)"; trap 'rm -rf "$temp"' RETURN
-  tag="$(curl -fsSL https://api.github.com/repos/XTLS/Xray-core/releases/latest | jq -r '.tag_name')"
-  [[ "$tag" =~ ^v[0-9] ]] || die 'could not determine the Xray release'
-  url="https://github.com/XTLS/Xray-core/releases/download/$tag/Xray-linux-64.zip"
-  curl -fL --retry 3 -o "$temp/xray.zip" "$url"
+  note 'Installing verified Xray core release'
+  local temp; temp="$(mktemp -d)"; trap 'rm -rf "$temp"' RETURN
+  download_release_asset XTLS Xray-core Xray-linux-64.zip "$temp/xray.zip"
   unzip -qq "$temp/xray.zip" -d "$temp"
   install -m 755 "$temp/xray" /usr/local/bin/xray
   xray version >/dev/null
@@ -109,19 +117,23 @@ install_xray() {
 
 install_hysteria2() {
   command -v hysteria >/dev/null 2>&1 && return
-  note 'Installing official Hysteria 2 binary'
-  local installer; installer="$(mktemp)"; trap 'rm -f "$installer"' RETURN
-  curl -fsSL https://get.hy2.sh/ -o "$installer"
-  bash "$installer"
-  systemctl disable --now hysteria-server.service 2>/dev/null || true
+  note 'Installing verified Hysteria 2 release'
+  local temp; temp="$(mktemp -d)"; trap 'rm -rf "$temp"' RETURN
+  download_release_asset apernet hysteria hysteria-linux-amd64 "$temp/hysteria"
+  install -m 755 "$temp/hysteria" /usr/local/bin/hysteria
+  hysteria version >/dev/null
 }
 
 install_singbox() {
   command -v sing-box >/dev/null 2>&1 && return
-  note 'Installing sing-box for Hysteria 1'
-  local installer; installer="$(mktemp)"; trap 'rm -f "$installer"' RETURN
-  curl -fsSL https://sing-box.app/install.sh -o "$installer"
-  sh "$installer"
+  note 'Installing verified sing-box release'
+  local temp version asset; temp="$(mktemp -d)"; trap 'rm -rf "$temp"' RETURN
+  version="$(curl -fsSL --retry 3 https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r '.tag_name')"
+  [[ "$version" =~ ^v[0-9] ]] || die 'could not determine sing-box release'
+  asset="sing-box_${version#v}_linux_amd64.deb"
+  download_release_asset SagerNet sing-box "$asset" "$temp/sing-box.deb"
+  dpkg -i "$temp/sing-box.deb" || apt-get -f install -y
+  sing-box version >/dev/null
 }
 
 install_xray
@@ -198,6 +210,8 @@ bash "$script_dir/udp-custom-install.sh"
 
 note 'Enabling every installed Frimps service for this boot and future boots'
 bash "$script_dir/refresh-menu-v6.sh"
+systemctl enable --now certbot.timer
+bash "$script_dir/postflight-v6.sh"
 
 required_units='ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-payloadgate ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-udp-routing ssh-xray-websocket-v6-wireguard-nat frimps-openvpn-nat frimps-openvpn-udp frimps-openvpn-tcp frimps-openvpn-gateway frimps-openvpn-stunnel frimps-openvpn-bshield hysteria1-server hysteria2-server wg-quick@wg0 frimps-slowdns zivpn frimps-badvpn frimps-udp-custom nginx haproxy'
 failed_units=()

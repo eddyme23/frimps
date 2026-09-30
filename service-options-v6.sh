@@ -40,13 +40,11 @@ valid_hostname "$domain" || die 'invalid domain'
 
 ns="$(ask 'SlowDNS nameserver (metadata until SlowDNS is installed)' "${V6_SLOWDNS_NS:-ns1.$domain}")"
 valid_hostname "$ns" || die 'invalid SlowDNS nameserver'
-hy1_obfs="$(ask 'Hysteria 1 obfuscation' "$V6_HYSTERIA1_OBFS")"
-valid_token "$hy1_obfs" || die 'Hysteria 1 obfuscation must use letters, digits, dot, underscore, or hyphen'
+shared_obfs="$(ask 'Shared Hysteria 1 / ZiVPN obfuscation' "${V6_HYSTERIA1_OBFS:-$V6_ZIVPN_OBFS}")"
+valid_token "$shared_obfs" || die 'shared obfuscation must use letters, digits, dot, underscore, or hyphen'
 hy2_default="${V6_HYSTERIA2_OBFS:-$(random_token)}"
 hy2_obfs="$(ask 'Hysteria 2 Salamander password' "$hy2_default")"
 valid_token "$hy2_obfs" || die 'Hysteria 2 password must use letters, digits, dot, underscore, or hyphen'
-zivpn_obfs="$(ask 'ZiVPN obfuscation (stored for future ZiVPN installer)' "$V6_ZIVPN_OBFS")"
-valid_token "$zivpn_obfs" || die 'ZiVPN obfuscation must use letters, digits, dot, underscore, or hyphen'
 read -r -s -p 'ZiVPN password (leave blank to keep/generate one): ' zivpn_password
 echo
 zivpn_password="${zivpn_password:-${V6_ZIVPN_PASSWORD:-$(random_token)}}"
@@ -55,9 +53,9 @@ valid_token "$zivpn_password" || die 'ZiVPN password must use letters, digits, d
 install -d -m 700 "$state_dir"
 {
   printf 'V6_SLOWDNS_NS=%q\n' "$ns"
-  printf 'V6_HYSTERIA1_OBFS=%q\n' "$hy1_obfs"
+  printf 'V6_HYSTERIA1_OBFS=%q\n' "$shared_obfs"
   printf 'V6_HYSTERIA2_OBFS=%q\n' "$hy2_obfs"
-  printf 'V6_ZIVPN_OBFS=%q\n' "$zivpn_obfs"
+  printf 'V6_ZIVPN_OBFS=%q\n' "$shared_obfs"
   printf 'V6_ZIVPN_PASSWORD=%q\n' "$zivpn_password"
 } > "$options"
 chmod 600 "$options"
