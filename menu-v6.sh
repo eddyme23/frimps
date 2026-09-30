@@ -26,7 +26,8 @@ ask_account() { read -r -p 'Username: ' account; read -r -p 'Validity (days): ' 
 primary_domain() { jq -r '.primaryDomain' "$state_dir/routes.json"; }
 load_service_options() { [[ -r "$state_dir/service-options.env" ]] && source "$state_dir/service-options.env"; }
 load_runtime() { [[ -r "$state_dir/runtime.env" ]] && source "$state_dir/runtime.env"; export V6_CERT_FILE="${V6_CERT_FILE:-${V6_STORED_CERT_FILE:-}}" V6_KEY_FILE="${V6_KEY_FILE:-${V6_STORED_KEY_FILE:-}}"; }
-pick_xray_account() { local protocol="$1" store; store="$state_dir/users/${protocol}.json"; mapfile -t names < <(jq -r '.[].name' "$store" 2>/dev/null); ((${#names[@]})) || { echo 'No accounts found.'; return 1; }; local i=1; for name in "${names[@]}"; do printf '  [%02d] %s\n' "$i" "$name"; ((i++)); done; echo '  [00] Back'; read -r -p '  ► Account: ' i; [[ "$i" =~ ^[0-9]+$ ]] && ((i>0 && i<=${#names[@]})) || return 1; account="${names[$((i-1))]}"; }
+pick_account_store() { local store="$1" field="${2:-name}" label="${3:-Account}" i; mapfile -t names < <(jq -r ".[] | .$field" "$store" 2>/dev/null); ((${#names[@]})) || { echo "No $label accounts found."; return 1; }; menu_title "SELECT $label ACCOUNT"; for i in "${!names[@]}"; do item "$((i+1))" "${names[$i]}"; done; back_item; read -r -p '  ► Select account: ' i; [[ "$i" =~ ^[0-9]+$ ]] && ((i>0 && i<=${#names[@]})) || return 1; account="${names[$((i-1))]}"; }
+pick_xray_account() { pick_account_store "$state_dir/users/$1.json" name "${1^^}"; }
 
 show_ports() {
   local domain ram cpu kernel
@@ -87,43 +88,37 @@ remaining_services_menu() {
 
 wireguard_menu() {
   while true; do
-    clear; echo '═══ WIREGUARD MANAGEMENT ═══'
-    select choice in 'Create peer' 'Renew peer' 'Delete peer' 'List peers' 'Show client config' 'Show WireGuard link' 'Back'; do
-      [[ "$REPLY" == 0 ]] && return
-      case "$choice" in
-        'Create peer') ask_account; "$script_dir/wireguard-accounts.sh" create "$account" "$validity"; pause ;;
-        'Renew peer') ask_account; "$script_dir/wireguard-accounts.sh" renew "$account" "$validity"; pause ;;
-        'Delete peer') read -r -p 'Username: ' account; "$script_dir/wireguard-accounts.sh" delete "$account"; pause ;;
-        'List peers') "$script_dir/wireguard-accounts.sh" list; pause ;;
-        'Show client config') read -r -p 'Username: ' account; "$script_dir/wireguard-accounts.sh" config "$account"; pause ;;
-        'Show WireGuard link') read -r -p 'Username: ' account; "$script_dir/wireguard-accounts.sh" link "$account"; pause ;;
-        Back) return ;;
-        *) echo 'Choose a listed option.' ;;
-      esac
-      break
-    done
+    clear; menu_title 'WIREGUARD ACCOUNT MANAGEMENT'
+    item 1 'Create WireGuard account'; item 2 'Renew WireGuard account'; item 3 'Delete WireGuard account'; item 4 'List WireGuard accounts'; item 5 'Show WireGuard link'; item 6 'Show WireGuard client config'; item 7 'Remove expired accounts'; back_item
+    read -r -p '  ► Option: ' x
+    case "$x" in
+      1) ask_account; bash "$script_dir/wireguard-accounts.sh" create "$account" "$validity"; pause ;;
+      2) pick_account_store "$state_dir/wireguard-users.json" name WireGuard && { read -r -p 'Validity (days): ' validity; bash "$script_dir/wireguard-accounts.sh" renew "$account" "$validity"; }; pause ;;
+      3) pick_account_store "$state_dir/wireguard-users.json" name WireGuard && bash "$script_dir/wireguard-accounts.sh" delete "$account"; pause ;;
+      4) bash "$script_dir/wireguard-accounts.sh" list; pause ;;
+      5) pick_account_store "$state_dir/wireguard-users.json" name WireGuard && bash "$script_dir/wireguard-accounts.sh" link "$account"; pause ;;
+      6) pick_account_store "$state_dir/wireguard-users.json" name WireGuard && bash "$script_dir/wireguard-accounts.sh" config "$account"; pause ;;
+      7) bash "$script_dir/wireguard-accounts.sh" cleanup; pause ;;
+      0) return ;; *) echo 'Invalid option.'; sleep 1 ;;
+    esac
   done
 }
 
 openvpn_menu() {
   while true; do
-    clear; echo '═══ OPENVPN MANAGEMENT ═══'
-    select choice in 'Configure service' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show UDP profile' 'Show TCP profile' 'Show universal profile' 'Back'; do
-      [[ "$REPLY" == 0 ]] && return
-      case "$choice" in
-        'Configure service') V6_DOMAIN="$(primary_domain)" "$script_dir/openvpn-install.sh"; pause ;;
-        'Create account') ask_account; V6_DOMAIN="$(primary_domain)" "$script_dir/openvpn-accounts.sh" create "$account" "$validity"; pause ;;
-        'Renew account') ask_account; "$script_dir/openvpn-accounts.sh" renew "$account" "$validity"; pause ;;
-        'Delete account') read -r -p 'Username: ' account; "$script_dir/openvpn-accounts.sh" delete "$account"; pause ;;
-        'List accounts') "$script_dir/openvpn-accounts.sh" list; pause ;;
-        'Show UDP profile') read -r -p 'Username: ' account; "$script_dir/openvpn-accounts.sh" profile "$account" udp; pause ;;
-        'Show TCP profile') read -r -p 'Username: ' account; "$script_dir/openvpn-accounts.sh" profile "$account" tcp; pause ;;
-        'Show universal profile') cat /etc/openvpn/client-template.ovpn 2>/dev/null || echo 'Configure OpenVPN first.'; pause ;;
-        Back) return ;;
-        *) echo 'Choose a listed option.' ;;
-      esac
-      break
-    done
+    clear; menu_title 'OPENVPN ACCOUNT MANAGEMENT'
+    item 1 'Create OpenVPN account'; item 2 'Renew OpenVPN account'; item 3 'Delete OpenVPN account'; item 4 'List OpenVPN accounts'; item 5 'Show UDP profile'; item 6 'Show TCP profile'; item 7 'Show universal profile'; back_item
+    read -r -p '  ► Option: ' x
+    case "$x" in
+      1) ask_account; V6_DOMAIN="$(primary_domain)" bash "$script_dir/openvpn-accounts.sh" create "$account" "$validity"; pause ;;
+      2) pick_account_store "$state_dir/openvpn-users.json" name OpenVPN && { read -r -p 'Validity (days): ' validity; bash "$script_dir/openvpn-accounts.sh" renew "$account" "$validity"; }; pause ;;
+      3) pick_account_store "$state_dir/openvpn-users.json" name OpenVPN && bash "$script_dir/openvpn-accounts.sh" delete "$account"; pause ;;
+      4) bash "$script_dir/openvpn-accounts.sh" list; pause ;;
+      5) pick_account_store "$state_dir/openvpn-users.json" name OpenVPN && bash "$script_dir/openvpn-accounts.sh" profile "$account" udp; pause ;;
+      6) pick_account_store "$state_dir/openvpn-users.json" name OpenVPN && bash "$script_dir/openvpn-accounts.sh" profile "$account" tcp; pause ;;
+      7) cat /etc/openvpn/client-template.ovpn 2>/dev/null || echo 'OpenVPN is not installed.'; pause ;;
+      0) return ;; *) echo 'Invalid option.'; sleep 1 ;;
+    esac
   done
 }
 
@@ -151,31 +146,25 @@ hysteria1_menu() {
 
 hysteria2_menu() {
   while true; do
-    clear; echo '═══ HYSTERIA 2 MANAGEMENT ═══'
-    select choice in 'Configure installed Hysteria backend' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show link' 'Back'; do
-      [[ "$REPLY" == 0 ]] && return
-      case "$choice" in
-        'Configure installed Hysteria backend') load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria2-install.sh"; pause ;;
-        'Create account') ask_account; load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria2-accounts.sh" create "$account" "$validity"; pause ;;
-        'Renew account') ask_account; "$script_dir/hysteria2-accounts.sh" renew "$account" "$validity"; pause ;;
-        'Delete account') read -r -p 'Username: ' account; "$script_dir/hysteria2-accounts.sh" delete "$account"; pause ;;
-        'List accounts') "$script_dir/hysteria2-accounts.sh" list; pause ;;
-        'Show link') read -r -p 'Username: ' account; "$script_dir/hysteria2-accounts.sh" uri "$account"; pause ;;
-        Back) return ;;
-        *) echo 'Choose a listed option.' ;;
-      esac
-      break
-    done
+    clear; menu_title 'HYSTERIA 2 ACCOUNT MANAGEMENT'
+    item 1 'Create Hysteria 2 account'; item 2 'Renew Hysteria 2 account'; item 3 'Delete Hysteria 2 account'; item 4 'List Hysteria 2 accounts'; item 5 'Show Hysteria 2 link'; back_item
+    read -r -p '  ► Option: ' x
+    case "$x" in
+      1) ask_account; load_service_options; V6_DOMAIN="$(primary_domain)" bash "$script_dir/hysteria2-accounts.sh" create "$account" "$validity"; pause ;;
+      2) pick_account_store "$state_dir/hysteria2-users.json" name 'Hysteria 2' && { read -r -p 'Validity (days): ' validity; bash "$script_dir/hysteria2-accounts.sh" renew "$account" "$validity"; }; pause ;;
+      3) pick_account_store "$state_dir/hysteria2-users.json" name 'Hysteria 2' && bash "$script_dir/hysteria2-accounts.sh" delete "$account"; pause ;;
+      4) bash "$script_dir/hysteria2-accounts.sh" list; pause ;;
+      5) pick_account_store "$state_dir/hysteria2-users.json" name 'Hysteria 2' && bash "$script_dir/hysteria2-accounts.sh" uri "$account"; pause ;;
+      0) return ;; *) echo 'Invalid option.'; sleep 1 ;;
+    esac
   done
 }
 
 settings_menu() {
   clear
-  echo '═══ DOMAIN / SLOWDNS / OBFUSCATION SETTINGS ═══'
+  menu_title 'DOMAIN / OBFUSCATION SETTINGS'
   echo
   bash "$script_dir/service-options-v6.sh"
-  read -r -p 'Install/enable SlowDNS using these settings now? [y/N] ' x
-  [[ "$x" =~ ^[Yy]$ ]] && slowdns_menu
   pause
 }
 
@@ -183,21 +172,19 @@ zivpn_menu() {
   while true; do
     clear
     menu_title 'ZIVPN ACCOUNT MANAGEMENT'
-    item 1 'Install / reconfigure backend'
-    item 2 'Create account'
-    item 3 'Renew account'
-    item 4 'Delete account'
-    item 5 'List accounts'
-    item 6 'Service status'
+    item 1 'Create account'
+    item 2 'Renew account'
+    item 3 'Delete account'
+    item 4 'List accounts'
+    item 5 'Service status'
     back_item
     read -r -p '  ► Option: ' x
     case "$x" in
-      1) load_runtime; load_service_options; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-install.sh"; systemctl enable --now zivpn.service; pause ;;
-      2) read -r -p 'Password / username: ' account; read -r -p 'Validity (days): ' validity; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-accounts.sh" create "$account" "$validity"; pause ;;
-      3) read -r -p 'Password / username: ' account; read -r -p 'Validity (days): ' validity; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-accounts.sh" renew "$account" "$validity"; pause ;;
-      4) read -r -p 'Password / username: ' account; bash "$script_dir/zivpn-accounts.sh" delete "$account"; pause ;;
-      5) bash "$script_dir/zivpn-accounts.sh" list; pause ;;
-      6) systemctl --no-pager --full status zivpn.service; pause ;;
+      1) read -r -p 'Password / username: ' account; read -r -p 'Validity (days): ' validity; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-accounts.sh" create "$account" "$validity"; pause ;;
+      2) pick_account_store "$state_dir/zivpn-users.json" password ZiVPN && { read -r -p 'Validity (days): ' validity; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-accounts.sh" renew "$account" "$validity"; }; pause ;;
+      3) pick_account_store "$state_dir/zivpn-users.json" password ZiVPN && bash "$script_dir/zivpn-accounts.sh" delete "$account"; pause ;;
+      4) bash "$script_dir/zivpn-accounts.sh" list; pause ;;
+      5) systemctl --no-pager --full status zivpn.service; pause ;;
       0) return ;;
       *) echo 'Invalid option.'; sleep 1 ;;
     esac
@@ -210,74 +197,33 @@ maintenance_menu() { while true; do clear; echo '═══ FRIMPS MAINTENANCE �
 
 xray_menu() {
   while true; do
-    clear; echo '═══ XRAY MANAGEMENT ═══'
-    select choice in 'VLESS accounts' 'Trojan accounts' 'REALITY server information' 'Back'; do
-      [[ "$REPLY" == 0 ]] && return
-      case "$choice" in
-        'VLESS accounts') vless_menu ;;
-        'Trojan accounts') trojan_menu ;;
-        'REALITY server information') [[ -s "$state_dir/reality-client-info.json" ]] && cat "$state_dir/reality-client-info.json" || echo 'REALITY keys have not been generated.'; pause ;;
-        Back) return ;;
-        *) echo 'Choose a listed option.' ;;
-      esac
-      break
-    done
+    clear; menu_title 'XRAY ACCOUNT MANAGEMENT'; item 1 'VLESS accounts'; item 2 'Trojan accounts'; item 3 'REALITY server information'; back_item
+    read -r -p '  ► Option: ' x
+    case "$x" in 1) vless_menu;; 2) trojan_menu;; 3) [[ -s "$state_dir/reality-client-info.json" ]] && cat "$state_dir/reality-client-info.json" || echo 'REALITY keys have not been generated.'; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac
   done
 }
 
 vless_menu() {
   while true; do
-    clear; echo '═══ VLESS ACCOUNT MANAGEMENT ═══'
-    select choice in 'Create' 'Renew' 'Delete' 'List' 'Show links' 'Back'; do
-      [[ "$REPLY" == 0 ]] && return
-      case "$choice" in
-        Create) ask_account; "$script_dir/accounts.sh" vless create "$account" "$validity"; pause ;;
-        Renew) ask_account; "$script_dir/accounts.sh" vless renew "$account" "$validity"; pause ;;
-        Delete) read -r -p 'Username: ' account; "$script_dir/accounts.sh" vless delete "$account"; pause ;;
-        List) "$script_dir/accounts.sh" vless list; pause ;;
-        'Show links') pick_xray_account vless && "$script_dir/accounts.sh" vless links "$account"; pause ;;
-        Back) return ;;
-        *) echo 'Choose a listed option.' ;;
-      esac
-      break
-    done
+    clear; menu_title 'VLESS ACCOUNT MANAGEMENT'; item 1 'Create account'; item 2 'Renew account'; item 3 'Delete account'; item 4 'List accounts'; item 5 'Show config links'; back_item
+    read -r -p '  ► Option: ' x
+    case "$x" in 1) ask_account; bash "$script_dir/accounts.sh" vless create "$account" "$validity"; pause;; 2) pick_xray_account vless && { read -r -p 'Validity (days): ' validity; bash "$script_dir/accounts.sh" vless renew "$account" "$validity"; }; pause;; 3) pick_xray_account vless && bash "$script_dir/accounts.sh" vless delete "$account"; pause;; 4) bash "$script_dir/accounts.sh" vless list; pause;; 5) pick_xray_account vless && bash "$script_dir/accounts.sh" vless links "$account"; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac
   done
 }
 
 trojan_menu() {
   while true; do
-    clear; echo '═══ TROJAN ACCOUNT MANAGEMENT ═══'
-    select choice in 'Create' 'Renew' 'Delete' 'List' 'Show link' 'Back'; do
-      [[ "$REPLY" == 0 ]] && return
-      case "$choice" in
-        Create) ask_account; "$script_dir/accounts.sh" trojan create "$account" "$validity"; pause ;;
-        Renew) ask_account; "$script_dir/accounts.sh" trojan renew "$account" "$validity"; pause ;;
-        Delete) read -r -p 'Username: ' account; "$script_dir/accounts.sh" trojan delete "$account"; pause ;;
-        List) "$script_dir/accounts.sh" trojan list; pause ;;
-        'Show link') pick_xray_account trojan && "$script_dir/accounts.sh" trojan links "$account"; pause ;;
-        Back) return ;;
-        *) echo 'Choose a listed option.' ;;
-      esac
-      break
-    done
+    clear; menu_title 'TROJAN ACCOUNT MANAGEMENT'; item 1 'Create account'; item 2 'Renew account'; item 3 'Delete account'; item 4 'List accounts'; item 5 'Show config link'; back_item
+    read -r -p '  ► Option: ' x
+    case "$x" in 1) ask_account; bash "$script_dir/accounts.sh" trojan create "$account" "$validity"; pause;; 2) pick_xray_account trojan && { read -r -p 'Validity (days): ' validity; bash "$script_dir/accounts.sh" trojan renew "$account" "$validity"; }; pause;; 3) pick_xray_account trojan && bash "$script_dir/accounts.sh" trojan delete "$account"; pause;; 4) bash "$script_dir/accounts.sh" trojan list; pause;; 5) pick_xray_account trojan && bash "$script_dir/accounts.sh" trojan links "$account"; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac
   done
 }
 
 ssh_menu() {
   while true; do
-    clear; echo '═══ SSH ACCOUNT MANAGEMENT ═══'
-    select choice in 'Create' 'Renew' 'Delete from numbered list' 'List' 'Back'; do
-      [[ "$REPLY" == 0 ]] && return
-      case "$choice" in
-        Create) ask_account; "$script_dir/ssh-accounts.sh" create "$account" "$validity"; pause ;;
-        Renew) ask_account; "$script_dir/ssh-accounts.sh" renew "$account" "$validity"; pause ;;
-        'Delete from numbered list') "$script_dir/ssh-accounts.sh" choose-delete; pause ;;
-        List) "$script_dir/ssh-accounts.sh" list; pause ;;
-        Back) return ;;
-        *) echo 'Choose a listed option.' ;;
-      esac
-      break
-    done
+    clear; menu_title 'SSH ACCOUNT MANAGEMENT'; item 1 'Create SSH account'; item 2 'Renew SSH account'; item 3 'Delete SSH account'; item 4 'List SSH accounts'; item 5 'SlowDNS / UDP Custom supporting service status'; back_item
+    read -r -p '  ► Option: ' x
+    case "$x" in 1) ask_account; bash "$script_dir/ssh-accounts.sh" create "$account" "$validity"; pause;; 2) ask_account; bash "$script_dir/ssh-accounts.sh" renew "$account" "$validity"; pause;; 3) bash "$script_dir/ssh-accounts.sh" choose-delete; pause;; 4) bash "$script_dir/ssh-accounts.sh" list; pause;; 5) systemctl --no-pager --full status frimps-slowdns.service frimps-badvpn.service frimps-udp-custom.service; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac
   done
 }
 
@@ -286,20 +232,19 @@ while true; do
   clear
   show_ports
   echo
-  item 1 'SSH Account Management (SSH / Payload / SlowDNS)'
+  item 1 'SSH Account Management (SSH / SlowDNS / UDP Custom)'
   item 2 'Xray Account Management (VLESS / Trojan / REALITY)'
   item 3 'Hysteria 1 Account Management (UDP)'
   item 4 'ZiVPN Account Management (UDP)'
-  item 5 'OpenVPN Account Management (UDP / TCP / SSL / WS)'
-  item 6 'WireGuard Account Management (UDP)'
-  item 7 'Hysteria 2 Account Management (UDP)'
-  item 8 'SlowDNS / Domain / Obfuscation Settings'
-  item 9 'UDP Custom Management'
-  item 10 'Service Status'
-  item 11 'Validate Frimps State'
-  item 12 'Advanced: Stage Remaining-Service Foundation'
-  item 13 'System Utilities (BBR / Netflix)'
-  item 14 'Maintenance (monitor / restart / backup / cleanup)'
+  item 5 'Monitor Active Connections'
+  item 6 'Service Controls (restart protocols)'
+  item 7 'Create Frimps Backup'
+  item 8 'System Utilities (BBR / Netflix)'
+  item 9 'Advanced Settings (domain / obfuscation)'
+  item 10 'Reboot Server'
+  item 11 'Hysteria 2 Account Management (UDP)'
+  item 12 'OpenVPN Account Management (OpenVPN3)'
+  item 13 'WireGuard Account Management (UDP)'
   printf '  [%b00%b] %bExit%b\n' "$RED" "$NC" "$BOLD" "$NC"
   echo
   read -r -p '  ► Select an option: ' choice
@@ -308,16 +253,15 @@ while true; do
     2|02) xray_menu ;;
     3|03) hysteria1_menu ;;
     4|04) zivpn_menu ;;
-    5|05) openvpn_menu ;;
-    6|06) wireguard_menu ;;
-    7|07) hysteria2_menu ;;
-    8|08) settings_menu ;;
-    9|09) udp_custom_menu ;;
-    10) status_menu ;;
-    11) "$script_dir/validate-v6.sh"; pause ;;
-    12) remaining_services_menu ;;
-    13) utilities_menu ;;
-    14) maintenance_menu ;;
+    5|05) bash "$script_dir/maintenance-v6.sh" monitor; pause ;;
+    6|06) maintenance_menu ;;
+    7|07) bash "$script_dir/maintenance-v6.sh" backup; pause ;;
+    8|08) utilities_menu ;;
+    9|09) settings_menu ;;
+    10) read -r -p 'Reboot server now? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && reboot ;;
+    11) hysteria2_menu ;;
+    12) openvpn_menu ;;
+    13) wireguard_menu ;;
     0|00) exit 0 ;;
     *) echo 'Invalid option.'; sleep 1 ;;
   esac
