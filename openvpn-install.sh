@@ -94,14 +94,17 @@ chmod 600 /etc/openvpn/client-template.ovpn
 install -d -m 755 /usr/local/lib/ssh-xray-websocket-v6
 cat > /usr/local/lib/ssh-xray-websocket-v6/openvpn-tcp-gateway.js <<'EOF'
 const net=require('net');
+const methods=/^(GET|POST|CONNECT|HEAD|PUT|OPTIONS|PATCH|DELETE|TRACE) /;
 const close=s=>{if(s&&!s.destroyed)s.destroy()};
-const bridge=(c,first)=>{const u=net.connect(11940,'127.0.0.1',()=>{if(first.length)u.write(first);c.pipe(u);u.pipe(c)});c.on('error',()=>close(u));c.on('close',()=>close(u));u.on('error',()=>close(c));u.on('close',()=>close(c))};
-net.createServer(c=>{c.on('error',()=>{});let b=Buffer.alloc(0),timer=setTimeout(()=>close(c),15000);c.once('data',d=>{b=Buffer.concat([b,d]);if(!/^(GET|POST|CONNECT|HEAD|PUT|OPTIONS|PATCH|DELETE|TRACE) /.test(b.toString('ascii',0,Math.min(b.length,16)))){clearTimeout(timer);return bridge(c,b)};const eat=()=>{const n=b.indexOf('\r\n\r\n');if(n<0){c.once('data',d=>{b=Buffer.concat([b,d]);eat()});return}b=b.subarray(n+4);if(/^(GET|POST|CONNECT|HEAD|PUT|OPTIONS|PATCH|DELETE|TRACE) /.test(b.toString('ascii',0,Math.min(b.length,16))))return eat();clearTimeout(timer);bridge(c,b)};eat()})}).on('error',()=>{}).listen(1194,'0.0.0.0');
+const end=b=>{let n=b.indexOf('\r\n\r\n');return n>=0?n+4:((n=b.indexOf('\n\n'))>=0?n+2:-1)};
+const bridge=(c,first)=>{const u=net.connect(11940,'127.0.0.1');let t=setTimeout(()=>close(u),15000);u.once('connect',()=>{clearTimeout(t);if(first.length)u.write(first);c.pipe(u);u.pipe(c)});c.on('error',()=>close(u));c.on('close',()=>close(u));u.on('error',()=>close(c));u.on('close',()=>close(c))};
+net.createServer(c=>{c.setNoDelay(true);c.on('error',()=>{});let b=Buffer.alloc(0),done=false,t=setTimeout(()=>close(c),15000),blocks=0;const decide=first=>{if(done)return;done=true;clearTimeout(t);c.removeListener('data',read);bridge(c,first)};const read=d=>{if(done)return;b=Buffer.concat([b,d]);if(b.length>65536)return close(c);while(!done){if(!methods.test(b.toString('latin1',0,Math.min(b.length,16))))return decide(b);const n=end(b);if(n<0)return;if(++blocks>16)return close(c);b=b.subarray(n);if(!b.length)return}};c.on('data',read)}).on('error',()=>{}).listen(1194,'0.0.0.0');
 EOF
 cat > /usr/local/lib/ssh-xray-websocket-v6/openvpn-bshield.js <<'EOF'
 const http=require('http'),net=require('net');
 const close=s=>{if(s&&!s.destroyed)s.destroy()};
-http.createServer().on('upgrade',(r,s,h)=>{s.on('error',()=>{});if(r.url!=='/openvpn'){close(s);return}const u=net.connect(11940,'127.0.0.1',()=>{s.write('HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n');if(h.length)u.write(h);s.pipe(u);u.pipe(s)});s.on('close',()=>close(u));u.on('error',()=>close(s));u.on('close',()=>close(s))}).on('clientError',(_,s)=>close(s)).listen(10081,'127.0.0.1');
+const token=(v,t)=>String(v||'').split(',').some(x=>x.trim().toLowerCase()===t);
+http.createServer({maxHeaderSize:65536}).on('upgrade',(r,s,h)=>{s.on('error',()=>{});if(r.method!=='GET'||r.url!=='/openvpn'||!token(r.headers.connection,'upgrade')||!token(r.headers.upgrade,'websocket')){s.end('HTTP/1.1 400 Bad Request\r\nConnection: close\r\nContent-Length: 0\r\n\r\n');return}const u=net.connect(11940,'127.0.0.1');let t=setTimeout(()=>close(u),15000);u.once('connect',()=>{clearTimeout(t);s.write('HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\r\n');if(h.length)u.write(h);s.pipe(u);u.pipe(s)});s.on('close',()=>close(u));u.on('error',()=>close(s));u.on('close',()=>close(s))}).on('clientError',(_,s)=>close(s)).listen(10081,'127.0.0.1');
 EOF
 cat > /etc/openvpn/frimps-stunnel.conf <<EOF
 foreground = yes
