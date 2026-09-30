@@ -156,16 +156,16 @@ settings_menu() {
   clear
   echo '═══ DOMAIN / SLOWDNS / OBFUSCATION SETTINGS ═══'
   echo
-  "$script_dir/service-options-v6.sh"
+  bash "$script_dir/service-options-v6.sh"
   read -r -p 'Install/enable SlowDNS using these settings now? [y/N] ' x
   [[ "$x" =~ ^[Yy]$ ]] && slowdns_menu
   pause
 }
 
-zivpn_menu() { clear; load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/zivpn-install.sh"; read -r -p 'Enable ZiVPN now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now zivpn.service; pause; }
-slowdns_menu() { clear; "$script_dir/slowdns-install.sh"; read -r -p 'Enable SlowDNS now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-slowdns.service; pause; }
-udp_custom_menu() { clear; "$script_dir/udp-custom-install.sh"; read -r -p 'Enable UDP Custom now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-badvpn.service frimps-udp-custom.service; pause; }
-utilities_menu() { while true; do clear; echo '═══ SYSTEM UTILITIES ═══'; echo '  [1] BBR status'; echo '  [2] Enable native kernel BBR'; echo '  [3] Netflix / streaming region check'; echo '  [0] Back'; read -r -p '  ► Option: ' x; case "$x" in 1) "$script_dir/utilities-v6.sh" status; pause;; 2) "$script_dir/utilities-v6.sh" enable-bbr; pause;; 3) "$script_dir/utilities-v6.sh" netflix; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac; done; }
+zivpn_menu() { clear; load_service_options; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-install.sh"; read -r -p 'Enable ZiVPN now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now zivpn.service; pause; }
+slowdns_menu() { clear; bash "$script_dir/slowdns-install.sh"; read -r -p 'Enable SlowDNS now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-slowdns.service; pause; }
+udp_custom_menu() { clear; bash "$script_dir/udp-custom-install.sh"; read -r -p 'Enable UDP Custom now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-badvpn.service frimps-udp-custom.service; pause; }
+utilities_menu() { while true; do clear; echo '═══ SYSTEM UTILITIES ═══'; echo '  [1] BBR status'; echo '  [2] Enable native kernel BBR'; echo '  [3] Netflix / streaming region check'; echo '  [0] Back'; read -r -p '  ► Option: ' x; case "$x" in 1) bash "$script_dir/utilities-v6.sh" status; pause;; 2) bash "$script_dir/utilities-v6.sh" enable-bbr; pause;; 3) bash "$script_dir/utilities-v6.sh" netflix; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac; done; }
 
 xray_menu() {
   while true; do
