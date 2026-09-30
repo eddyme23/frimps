@@ -157,8 +157,14 @@ settings_menu() {
   echo '═══ DOMAIN / SLOWDNS / OBFUSCATION SETTINGS ═══'
   echo
   "$script_dir/service-options-v6.sh"
+  read -r -p 'Install/enable SlowDNS using these settings now? [y/N] ' x
+  [[ "$x" =~ ^[Yy]$ ]] && slowdns_menu
   pause
 }
+
+zivpn_menu() { clear; load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/zivpn-install.sh"; read -r -p 'Enable ZiVPN now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now zivpn.service; pause; }
+slowdns_menu() { clear; "$script_dir/slowdns-install.sh"; read -r -p 'Enable SlowDNS now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-slowdns.service; pause; }
+udp_custom_menu() { clear; "$script_dir/udp-custom-install.sh"; read -r -p 'Enable UDP Custom now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-badvpn.service frimps-udp-custom.service; pause; }
 
 xray_menu() {
   while true; do
@@ -232,7 +238,7 @@ ssh_menu() {
 while true; do
   show_ports
   echo
-  select choice in 'SSH management' 'Xray management' 'Stage remaining-service foundations' 'OpenVPN' 'Hysteria 1' 'Hysteria 2' 'ZiVPN' 'WireGuard' 'SlowDNS / domain' 'Service status' 'Validate v6 state' 'Exit'; do
+  select choice in 'SSH management' 'Xray management' 'Stage remaining-service foundations' 'OpenVPN' 'Hysteria 1' 'Hysteria 2' 'ZiVPN' 'WireGuard' 'SlowDNS / domain' 'UDP Custom' 'Service status' 'Validate v6 state' 'Exit'; do
     case "$choice" in
       'SSH management') ssh_menu ;;
       'Xray management') xray_menu ;;
@@ -240,9 +246,10 @@ while true; do
       OpenVPN) openvpn_menu ;;
       'Hysteria 1') hysteria1_menu ;;
       'Hysteria 2') hysteria2_menu ;;
-      ZiVPN) not_installed 'ZIVPN MANAGEMENT' ;;
+      ZiVPN) zivpn_menu ;;
       WireGuard) wireguard_menu ;;
       'SlowDNS / domain') settings_menu ;;
+      'UDP Custom') udp_custom_menu ;;
       'Service status') status_menu ;;
       'Validate v6 state') "$script_dir/validate-v6.sh"; pause ;;
       Exit) exit 0 ;;
