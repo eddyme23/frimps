@@ -165,6 +165,7 @@ settings_menu() {
 zivpn_menu() { clear; load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/zivpn-install.sh"; read -r -p 'Enable ZiVPN now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now zivpn.service; pause; }
 slowdns_menu() { clear; "$script_dir/slowdns-install.sh"; read -r -p 'Enable SlowDNS now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-slowdns.service; pause; }
 udp_custom_menu() { clear; "$script_dir/udp-custom-install.sh"; read -r -p 'Enable UDP Custom now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-badvpn.service frimps-udp-custom.service; pause; }
+utilities_menu() { while true; do clear; echo '═══ SYSTEM UTILITIES ═══'; echo '  [1] BBR status'; echo '  [2] Enable native kernel BBR'; echo '  [3] Netflix / streaming region check'; echo '  [0] Back'; read -r -p '  ► Option: ' x; case "$x" in 1) "$script_dir/utilities-v6.sh" status; pause;; 2) "$script_dir/utilities-v6.sh" enable-bbr; pause;; 3) "$script_dir/utilities-v6.sh" netflix; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac; done; }
 
 xray_menu() {
   while true; do
@@ -250,6 +251,7 @@ while true; do
   echo '  [10] Service Status'
   echo '  [11] Validate Frimps State'
   echo '  [12] Stage Remaining-Service Foundation'
+  echo '  [13] System Utilities (BBR / Netflix)'
   echo '  [00] Exit'
   echo
   read -r -p '  ► Select an option: ' choice
@@ -266,6 +268,7 @@ while true; do
     10) status_menu ;;
     11) "$script_dir/validate-v6.sh"; pause ;;
     12) remaining_services_menu ;;
+    13) utilities_menu ;;
     0|00) exit 0 ;;
     *) echo 'Invalid option.'; sleep 1 ;;
   esac
