@@ -49,7 +49,7 @@ show_ports() {
   printf '  %bDomain:%b   %-17s%bTime:%b  %-15s%bStatus:%b %bONLINE%b\n' "$WHITE" "$NC" "$domain" "$WHITE" "$NC" "$now" "$WHITE" "$NC" "$GREEN" "$NC"
   printf '%b--------------------------- PROTOCOL PORTS --------------------------%b\n' "$RED" "$NC"
   port_row 'SSH:' '22, 143' 'System-DNS:' '53'
-  port_row 'Dropbear:' '143' 'WEB-Nginx:' '80 / 443'
+  port_row 'Dropbear:' '80' 'WEB-Nginx:' '80 / 443'
   port_row 'SSL:' '443' 'SSH WS TLS:' '443'
   port_row 'SSH Payload:' '80, 8080, 8880' 'VLESS/Trojan:' '443'
   port_row 'SSH WS:' '2082, 2086' 'BadVPN:' '7300'
