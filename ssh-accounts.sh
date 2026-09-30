@@ -56,7 +56,8 @@ case "$action" in
     fi
     commit "$(jq --arg name "$user" --arg expiry "$expiry" '. + [{name:$name,expiresAt:$expiry}]' "$store")"
     domain="$(jq -r '.primaryDomain // empty' "$state_dir/routes.json")"
-    printf '\n═══ SSH ACCOUNT CREATED ═══\nHost: %s\nUsername: %s\nPassword: %s\nExpiry: %s\nSSH: 22, 143 | Payload/WS: 80, 8080, 8880 | TLS: 443\nPayload: GET / HTTP/1.1[crlf]Host: %s[crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf][crlf]\n' "$domain" "$user" "$password" "$expiry" "$domain"
+    slowdns_ns='Not configured'; [[ -r "$state_dir/service-options.env" ]] && source "$state_dir/service-options.env" && slowdns_ns="${V6_SLOWDNS_NS:-$slowdns_ns}"
+    printf '\n═══ SSH ACCOUNT CREATED ═══\nHost: %s\nUsername: %s\nPassword: %s\nExpiry: %s\n------------------------------------------------\nSSH: 22, 143 | Payload/WS: 80, 8080, 8880 | TLS: 443\nSlowDNS: UDP 53 | NS: %s\nUDP Custom: remaining UDP ports\n------------------------------------------------\nHTTP Payload: GET / HTTP/1.1[crlf]Host: %s[crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf][crlf]\nEnhanced Payload: GET / HTTP/1.1[crlf]Host: bug.com[crlf][crlf]PATCH / HTTP/1.1[crlf]Host: %s[crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf][crlf]\n' "$domain" "$user" "$password" "$expiry" "$slowdns_ns" "$domain" "$domain"
     unset password hash
     ;;
   renew)

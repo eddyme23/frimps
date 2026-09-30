@@ -13,6 +13,7 @@ pause() { read -r -p 'Press Enter to continue... ' _; }
 ask_account() { read -r -p 'Username: ' account; read -r -p 'Validity (days): ' validity; }
 primary_domain() { jq -r '.primaryDomain' "$state_dir/routes.json"; }
 load_service_options() { [[ -r "$state_dir/service-options.env" ]] && source "$state_dir/service-options.env"; }
+pick_xray_account() { local protocol="$1" store; store="$state_dir/${protocol}-users.json"; mapfile -t names < <(jq -r '.[].name' "$store" 2>/dev/null); ((${#names[@]})) || { echo 'No accounts found.'; return 1; }; local i=1; for name in "${names[@]}"; do printf '  [%02d] %s\n' "$i" "$name"; ((i++)); done; echo '  [00] Back'; read -r -p '  ► Account: ' i; [[ "$i" =~ ^[0-9]+$ ]] && ((i>0 && i<=${#names[@]})) || return 1; account="${names[$((i-1))]}"; }
 
 show_ports() {
   clear
@@ -80,6 +81,7 @@ wireguard_menu() {
   while true; do
     clear; echo '═══ WIREGUARD MANAGEMENT ═══'
     select choice in 'Create peer' 'Renew peer' 'Delete peer' 'List peers' 'Show client config' 'Show WireGuard link' 'Back'; do
+      [[ "$REPLY" == 0 ]] && return
       case "$choice" in
         'Create peer') ask_account; "$script_dir/wireguard-accounts.sh" create "$account" "$validity"; pause ;;
         'Renew peer') ask_account; "$script_dir/wireguard-accounts.sh" renew "$account" "$validity"; pause ;;
@@ -99,6 +101,7 @@ openvpn_menu() {
   while true; do
     clear; echo '═══ OPENVPN MANAGEMENT ═══'
     select choice in 'Configure service' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show UDP profile' 'Show TCP profile' 'Show universal profile' 'Back'; do
+      [[ "$REPLY" == 0 ]] && return
       case "$choice" in
         'Configure service') V6_DOMAIN="$(primary_domain)" "$script_dir/openvpn-install.sh"; pause ;;
         'Create account') ask_account; V6_DOMAIN="$(primary_domain)" "$script_dir/openvpn-accounts.sh" create "$account" "$validity"; pause ;;
@@ -120,6 +123,7 @@ hysteria1_menu() {
   while true; do
     clear; echo '═══ HYSTERIA 1 MANAGEMENT ═══'
     select choice in 'Configure installed sing-box backend' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show link' 'Back'; do
+      [[ "$REPLY" == 0 ]] && return
       case "$choice" in
         'Configure installed sing-box backend') load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria1-install.sh"; pause ;;
         'Create account') ask_account; load_service_options; read -r -p 'Account password (Enter for generated password): ' password; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria1-accounts.sh" create "$account" "$validity" "${password:-$(openssl rand -hex 12)}"; unset password; pause ;;
@@ -139,6 +143,7 @@ hysteria2_menu() {
   while true; do
     clear; echo '═══ HYSTERIA 2 MANAGEMENT ═══'
     select choice in 'Configure installed Hysteria backend' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show link' 'Back'; do
+      [[ "$REPLY" == 0 ]] && return
       case "$choice" in
         'Configure installed Hysteria backend') load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria2-install.sh"; pause ;;
         'Create account') ask_account; load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria2-accounts.sh" create "$account" "$validity"; pause ;;
@@ -173,6 +178,7 @@ xray_menu() {
   while true; do
     clear; echo '═══ XRAY MANAGEMENT ═══'
     select choice in 'VLESS accounts' 'Trojan accounts' 'REALITY server information' 'Back'; do
+      [[ "$REPLY" == 0 ]] && return
       case "$choice" in
         'VLESS accounts') vless_menu ;;
         'Trojan accounts') trojan_menu ;;
@@ -189,12 +195,13 @@ vless_menu() {
   while true; do
     clear; echo '═══ VLESS ACCOUNT MANAGEMENT ═══'
     select choice in 'Create' 'Renew' 'Delete' 'List' 'Show links' 'Back'; do
+      [[ "$REPLY" == 0 ]] && return
       case "$choice" in
         Create) ask_account; "$script_dir/accounts.sh" vless create "$account" "$validity"; pause ;;
         Renew) ask_account; "$script_dir/accounts.sh" vless renew "$account" "$validity"; pause ;;
         Delete) read -r -p 'Username: ' account; "$script_dir/accounts.sh" vless delete "$account"; pause ;;
         List) "$script_dir/accounts.sh" vless list; pause ;;
-        'Show links') read -r -p 'Username: ' account; "$script_dir/accounts.sh" vless links "$account"; pause ;;
+        'Show links') pick_xray_account vless && "$script_dir/accounts.sh" vless links "$account"; pause ;;
         Back) return ;;
         *) echo 'Choose a listed option.' ;;
       esac
@@ -207,12 +214,13 @@ trojan_menu() {
   while true; do
     clear; echo '═══ TROJAN ACCOUNT MANAGEMENT ═══'
     select choice in 'Create' 'Renew' 'Delete' 'List' 'Show link' 'Back'; do
+      [[ "$REPLY" == 0 ]] && return
       case "$choice" in
         Create) ask_account; "$script_dir/accounts.sh" trojan create "$account" "$validity"; pause ;;
         Renew) ask_account; "$script_dir/accounts.sh" trojan renew "$account" "$validity"; pause ;;
         Delete) read -r -p 'Username: ' account; "$script_dir/accounts.sh" trojan delete "$account"; pause ;;
         List) "$script_dir/accounts.sh" trojan list; pause ;;
-        'Show link') read -r -p 'Username: ' account; "$script_dir/accounts.sh" trojan links "$account"; pause ;;
+        'Show link') pick_xray_account trojan && "$script_dir/accounts.sh" trojan links "$account"; pause ;;
         Back) return ;;
         *) echo 'Choose a listed option.' ;;
       esac
@@ -225,6 +233,7 @@ ssh_menu() {
   while true; do
     clear; echo '═══ SSH ACCOUNT MANAGEMENT ═══'
     select choice in 'Create' 'Renew' 'Delete from numbered list' 'List' 'Back'; do
+      [[ "$REPLY" == 0 ]] && return
       case "$choice" in
         Create) ask_account; "$script_dir/ssh-accounts.sh" create "$account" "$validity"; pause ;;
         Renew) ask_account; "$script_dir/ssh-accounts.sh" renew "$account" "$validity"; pause ;;
