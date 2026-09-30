@@ -9,7 +9,19 @@ script_path="$(readlink -f -- "${BASH_SOURCE[0]}")"
 script_dir="$(cd -- "$(dirname -- "$script_path")" && pwd)"
 state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
 
-pause() { read -r -p 'Press Enter to continue... ' _; }
+# GF visual language, kept terminal-safe: colour is disabled when output is
+# redirected so account links and scripts remain clean plain text.
+if [[ -t 1 && "${TERM:-dumb}" != dumb ]]; then
+  RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; BLUE=$'\033[0;34m'; CYAN=$'\033[0;36m'; WHITE=$'\033[1;37m'; BOLD=$'\033[1m'; NC=$'\033[0m'
+else
+  RED= GREEN= YELLOW= BLUE= CYAN= WHITE= BOLD= NC=
+fi
+
+line() { printf '%b══════════════════════════════════════════════════════════════%b\n' "$CYAN" "$NC"; }
+menu_title() { line; printf '                 %b%s%b\n' "$BOLD" "$1" "$NC"; line; }
+item() { printf '  [%b%02d%b] %s\n' "$YELLOW" "$1" "$NC" "$2"; }
+back_item() { printf '  [%b00%b] Back\n' "$YELLOW" "$NC"; }
+pause() { echo; read -r -p 'Press Enter to continue... ' _; }
 ask_account() { read -r -p 'Username: ' account; read -r -p 'Validity (days): ' validity; }
 primary_domain() { jq -r '.primaryDomain' "$state_dir/routes.json"; }
 load_service_options() { [[ -r "$state_dir/service-options.env" ]] && source "$state_dir/service-options.env"; }
@@ -17,30 +29,25 @@ load_runtime() { [[ -r "$state_dir/runtime.env" ]] && source "$state_dir/runtime
 pick_xray_account() { local protocol="$1" store; store="$state_dir/users/${protocol}.json"; mapfile -t names < <(jq -r '.[].name' "$store" 2>/dev/null); ((${#names[@]})) || { echo 'No accounts found.'; return 1; }; local i=1; for name in "${names[@]}"; do printf '  [%02d] %s\n' "$i" "$name"; ((i++)); done; echo '  [00] Back'; read -r -p '  ► Account: ' i; [[ "$i" =~ ^[0-9]+$ ]] && ((i>0 && i<=${#names[@]})) || return 1; account="${names[$((i-1))]}"; }
 
 show_ports() {
-  clear
-  cat <<'EOF'
-════════════ SSH / XRAY V6 ════════════
-
-SSH              22, 143 TCP
-SSH Payload      80, 8080, 8880 TCP
-SSH WS NTLS      80, 8080, 8880, 2082, 2086 TCP
-SSH SSL          443 TCP
-SSH WS TLS       443 TCP
-
-VLESS TLS        443 TCP
-VLESS Enc NTLS   80, 8080, 8880 TCP
-VLESS REALITY    443 TCP
-VLESS Vision     443 TCP
-Trojan WS TLS    443 TCP, path /trojan
-
-Hysteria 2       443 UDP
-OpenVPN          1194 TCP/UDP, 8433 TCP
-WireGuard        4000 UDP
-SlowDNS          53, 5300 UDP
-ZiVPN            6000-19999 UDP
-Hysteria 1       20000-50000 UDP
-UDP Custom       remaining UDP only
-EOF
+  local domain ram cpu kernel
+  domain="$(primary_domain 2>/dev/null || hostname -f 2>/dev/null || hostname)"
+  ram="$(free -h 2>/dev/null | awk '/^Mem:/ {print $3 "/" $2}' || echo n/a)"
+  cpu="$(awk -F': ' '/model name/ {print $2; exit}' /proc/cpuinfo 2>/dev/null || uname -m)"
+  kernel="$(uname -r)"
+  line
+  printf '        %bFRIMPS MULTI-PROTOCOL VPN MANAGEMENT%b\n' "$BOLD" "$NC"
+  printf '        %bSSH / XRAY / OPENVPN / HYSTERIA / WIREGUARD%b\n' "$GREEN" "$NC"
+  line
+  printf '  %bDomain:%b %-27s %bKernel:%b %s\n' "$WHITE" "$NC" "$domain" "$WHITE" "$NC" "$kernel"
+  printf '  %bRAM:%b    %-27s %bCPU:%b %s\n' "$WHITE" "$NC" "$ram" "$WHITE" "$NC" "$cpu"
+  printf '%b--------------------------- PUBLIC PORTS ---------------------------%b\n' "$CYAN" "$NC"
+  printf '  %-15s %-19s %-15s %s\n' 'SSH:' '22, 143 TCP' 'VLESS/Trojan:' '443 TCP'
+  printf '  %-15s %-19s %-15s %s\n' 'SSH Payload:' '80, 8080, 8880' 'Hysteria 2:' '443 UDP'
+  printf '  %-15s %-19s %-15s %s\n' 'SSH WS TLS:' '443 / 2082 / 2086' 'OpenVPN:' '1194 TCP/UDP, 8433'
+  printf '  %-15s %-19s %-15s %s\n' 'SlowDNS:' '53, 5300 UDP' 'WireGuard:' '4000 UDP'
+  printf '  %-15s %-19s %-15s %s\n' 'ZiVPN:' '6000-19999 UDP' 'Hysteria 1:' '20000-50000 UDP'
+  printf '  %-15s %-19s\n' 'UDP Custom:' 'remaining UDP ports'
+  line
 }
 
 not_installed() {
@@ -122,13 +129,13 @@ openvpn_menu() {
 
 hysteria1_menu() {
   while true; do
-    clear; echo '═══ HYSTERIA 1 ACCOUNT MANAGEMENT ═══'
-    echo '  [1] Create Hysteria 1 account'
-    echo '  [2] Renew Hysteria 1 account'
-    echo '  [3] Delete Hysteria 1 account'
-    echo '  [4] List Hysteria 1 accounts'
-    echo '  [5] Edit Hysteria 1 speeds'
-    echo '  [0] Back'
+    clear; menu_title 'HYSTERIA 1 ACCOUNT MANAGEMENT'
+    item 1 'Create Hysteria 1 account'
+    item 2 'Renew Hysteria 1 account'
+    item 3 'Delete Hysteria 1 account'
+    item 4 'List Hysteria 1 accounts'
+    item 5 'Edit Hysteria 1 speeds'
+    back_item
     read -r -p '  ► Option: ' x
     case "$x" in
       1) ask_account; load_service_options; read -r -p 'Account password (Enter for generated password): ' password; V6_DOMAIN="$(primary_domain)" bash "$script_dir/hysteria1-accounts.sh" create "$account" "$validity" "${password:-$(openssl rand -hex 12)}"; unset password; pause ;;
@@ -175,14 +182,14 @@ settings_menu() {
 zivpn_menu() {
   while true; do
     clear
-    echo '═══ ZIVPN ACCOUNT MANAGEMENT ═══'
-    echo '  [1] Install / reconfigure backend'
-    echo '  [2] Create account'
-    echo '  [3] Renew account'
-    echo '  [4] Delete account'
-    echo '  [5] List accounts'
-    echo '  [6] Service status'
-    echo '  [0] Back'
+    menu_title 'ZIVPN ACCOUNT MANAGEMENT'
+    item 1 'Install / reconfigure backend'
+    item 2 'Create account'
+    item 3 'Renew account'
+    item 4 'Delete account'
+    item 5 'List accounts'
+    item 6 'Service status'
+    back_item
     read -r -p '  ► Option: ' x
     case "$x" in
       1) load_runtime; load_service_options; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-install.sh"; systemctl enable --now zivpn.service; pause ;;
@@ -276,23 +283,24 @@ ssh_menu() {
 
 while true; do
   load_runtime
+  clear
   show_ports
   echo
-  echo '  [01] SSH Account Management'
-  echo '  [02] Xray Account Management'
-  echo '  [03] Hysteria 1 Account Management'
-  echo '  [04] ZiVPN Account Management'
-  echo '  [05] OpenVPN Account Management'
-  echo '  [06] WireGuard Account Management'
-  echo '  [07] Hysteria 2 Account Management'
-  echo '  [08] SlowDNS / Domain / Obfuscation Settings'
-  echo '  [09] UDP Custom Management'
-  echo '  [10] Service Status'
-  echo '  [11] Validate Frimps State'
-  echo '  [12] Advanced: Stage Remaining-Service Foundation'
-  echo '  [13] System Utilities (BBR / Netflix)'
-  echo '  [14] Maintenance (monitor / restart / backup / cleanup)'
-  echo '  [00] Exit'
+  item 1 'SSH Account Management (SSH / Payload / SlowDNS)'
+  item 2 'Xray Account Management (VLESS / Trojan / REALITY)'
+  item 3 'Hysteria 1 Account Management (UDP)'
+  item 4 'ZiVPN Account Management (UDP)'
+  item 5 'OpenVPN Account Management (UDP / TCP / SSL / WS)'
+  item 6 'WireGuard Account Management (UDP)'
+  item 7 'Hysteria 2 Account Management (UDP)'
+  item 8 'SlowDNS / Domain / Obfuscation Settings'
+  item 9 'UDP Custom Management'
+  item 10 'Service Status'
+  item 11 'Validate Frimps State'
+  item 12 'Advanced: Stage Remaining-Service Foundation'
+  item 13 'System Utilities (BBR / Netflix)'
+  item 14 'Maintenance (monitor / restart / backup / cleanup)'
+  printf '  [%b00%b] %bExit%b\n' "$RED" "$NC" "$BOLD" "$NC"
   echo
   read -r -p '  ► Select an option: ' choice
   case "$choice" in
