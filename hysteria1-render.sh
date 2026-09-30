@@ -5,6 +5,7 @@ store="$state_dir/hysteria1-users.json"
 config=/etc/hysteria1/config.json
 cert_file="${V6_CERT_FILE:-/etc/certificates/main.crt}"
 key_file="${V6_KEY_FILE:-/etc/certificates/main.key}"
+[[ -r "$state_dir/service-options.env" ]] && source "$state_dir/service-options.env"
 obfs="${V6_HYSTERIA1_OBFS:-frEddxx}"
 [[ $EUID -eq 0 ]] || { echo 'run as root' >&2; exit 1; }
 users="$(jq '[.[] | {name:.name, auth_str:.password}]' "$store")"

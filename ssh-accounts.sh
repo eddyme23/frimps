@@ -54,8 +54,10 @@ case "$action" in
       userdel -r "$user" || true
       die "account creation failed and was rolled back"
     fi
-    unset password hash
     commit "$(jq --arg name "$user" --arg expiry "$expiry" '. + [{name:$name,expiresAt:$expiry}]' "$store")"
+    domain="$(jq -r '.primaryDomain // empty' "$state_dir/routes.json")"
+    printf '\n═══ SSH ACCOUNT CREATED ═══\nHost: %s\nUsername: %s\nPassword: %s\nExpiry: %s\nSSH: 22, 143 | Payload/WS: 80, 8080, 8880 | TLS: 443\nPayload: GET / HTTP/1.1[crlf]Host: %s[crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf][crlf]\n' "$domain" "$user" "$password" "$expiry" "$domain"
+    unset password hash
     ;;
   renew)
     valid_days "$days" || die "days must be a positive integer"

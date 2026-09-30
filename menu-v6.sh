@@ -9,6 +9,8 @@ state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
 
 pause() { read -r -p 'Press Enter to continue... ' _; }
 ask_account() { read -r -p 'Username: ' account; read -r -p 'Validity (days): ' validity; }
+primary_domain() { jq -r '.primaryDomain' "$state_dir/routes.json"; }
+load_service_options() { [[ -r "$state_dir/service-options.env" ]] && source "$state_dir/service-options.env"; }
 
 show_ports() {
   clear
@@ -50,7 +52,7 @@ status_menu() {
   clear
   echo '═══ V6 SERVICE STATUS ═══'
   echo
-  for unit in ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-payloadgate ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-gfraw ssh-xray-websocket-v6-udp-routing nginx haproxy; do
+  for unit in ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-payloadgate ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-gfraw ssh-xray-websocket-v6-udp-routing frimps-openvpn-udp frimps-openvpn-tcp frimps-openvpn-gateway frimps-openvpn-stunnel frimps-openvpn-bshield hysteria1-server hysteria2-server wg-quick@wg0 nginx haproxy; do
     printf '%-42s %s\n' "$unit" "$(systemctl is-active "$unit" 2>/dev/null || true)"
   done
   echo
@@ -94,20 +96,68 @@ wireguard_menu() {
 openvpn_menu() {
   while true; do
     clear; echo '═══ OPENVPN MANAGEMENT ═══'
-    select choice in 'Install on test VPS' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show UDP profile' 'Back'; do
+    select choice in 'Configure service' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show UDP profile' 'Show TCP profile' 'Show universal profile' 'Back'; do
       case "$choice" in
-        'Install on test VPS') V6_DOMAIN="$(jq -r '.primaryDomain' "$state_dir/routes.json")" "$script_dir/openvpn-install.sh"; pause ;;
-        'Create account') ask_account; V6_DOMAIN="$(jq -r '.primaryDomain' "$state_dir/routes.json")" "$script_dir/openvpn-accounts.sh" create "$account" "$validity"; pause ;;
+        'Configure service') V6_DOMAIN="$(primary_domain)" "$script_dir/openvpn-install.sh"; pause ;;
+        'Create account') ask_account; V6_DOMAIN="$(primary_domain)" "$script_dir/openvpn-accounts.sh" create "$account" "$validity"; pause ;;
         'Renew account') ask_account; "$script_dir/openvpn-accounts.sh" renew "$account" "$validity"; pause ;;
         'Delete account') read -r -p 'Username: ' account; "$script_dir/openvpn-accounts.sh" delete "$account"; pause ;;
         'List accounts') "$script_dir/openvpn-accounts.sh" list; pause ;;
-        'Show UDP profile') read -r -p 'Username: ' account; "$script_dir/openvpn-accounts.sh" profile "$account"; pause ;;
+        'Show UDP profile') read -r -p 'Username: ' account; "$script_dir/openvpn-accounts.sh" profile "$account" udp; pause ;;
+        'Show TCP profile') read -r -p 'Username: ' account; "$script_dir/openvpn-accounts.sh" profile "$account" tcp; pause ;;
+        'Show universal profile') cat /etc/openvpn/client-template.ovpn 2>/dev/null || echo 'Configure OpenVPN first.'; pause ;;
         Back) return ;;
         *) echo 'Choose a listed option.' ;;
       esac
       break
     done
   done
+}
+
+hysteria1_menu() {
+  while true; do
+    clear; echo '═══ HYSTERIA 1 MANAGEMENT ═══'
+    select choice in 'Configure installed sing-box backend' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show link' 'Back'; do
+      case "$choice" in
+        'Configure installed sing-box backend') load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria1-install.sh"; pause ;;
+        'Create account') ask_account; load_service_options; read -r -s -p 'Account password (Enter for generated password): ' password; echo; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria1-accounts.sh" create "$account" "$validity" "${password:-$(openssl rand -hex 12)}"; unset password; pause ;;
+        'Renew account') ask_account; "$script_dir/hysteria1-accounts.sh" renew "$account" "$validity"; pause ;;
+        'Delete account') read -r -p 'Username: ' account; "$script_dir/hysteria1-accounts.sh" delete "$account"; pause ;;
+        'List accounts') "$script_dir/hysteria1-accounts.sh" list; pause ;;
+        'Show link') read -r -p 'Username: ' account; "$script_dir/hysteria1-accounts.sh" uri "$account"; pause ;;
+        Back) return ;;
+        *) echo 'Choose a listed option.' ;;
+      esac
+      break
+    done
+  done
+}
+
+hysteria2_menu() {
+  while true; do
+    clear; echo '═══ HYSTERIA 2 MANAGEMENT ═══'
+    select choice in 'Configure installed Hysteria backend' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show link' 'Back'; do
+      case "$choice" in
+        'Configure installed Hysteria backend') load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria2-install.sh"; pause ;;
+        'Create account') ask_account; load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria2-accounts.sh" create "$account" "$validity"; pause ;;
+        'Renew account') ask_account; "$script_dir/hysteria2-accounts.sh" renew "$account" "$validity"; pause ;;
+        'Delete account') read -r -p 'Username: ' account; "$script_dir/hysteria2-accounts.sh" delete "$account"; pause ;;
+        'List accounts') "$script_dir/hysteria2-accounts.sh" list; pause ;;
+        'Show link') read -r -p 'Username: ' account; "$script_dir/hysteria2-accounts.sh" uri "$account"; pause ;;
+        Back) return ;;
+        *) echo 'Choose a listed option.' ;;
+      esac
+      break
+    done
+  done
+}
+
+settings_menu() {
+  clear
+  echo '═══ DOMAIN / SLOWDNS / OBFUSCATION SETTINGS ═══'
+  echo
+  "$script_dir/service-options-v6.sh"
+  pause
 }
 
 xray_menu() {
@@ -188,11 +238,11 @@ while true; do
       'Xray management') xray_menu ;;
       'Stage remaining-service foundations') remaining_services_menu ;;
       OpenVPN) openvpn_menu ;;
-      'Hysteria 1') not_installed 'HYSTERIA 1 MANAGEMENT' ;;
-      'Hysteria 2') not_installed 'HYSTERIA 2 MANAGEMENT' ;;
+      'Hysteria 1') hysteria1_menu ;;
+      'Hysteria 2') hysteria2_menu ;;
       ZiVPN) not_installed 'ZIVPN MANAGEMENT' ;;
       WireGuard) wireguard_menu ;;
-      'SlowDNS / domain') not_installed 'SLOWDNS / DOMAIN MANAGEMENT' ;;
+      'SlowDNS / domain') settings_menu ;;
       'Service status') status_menu ;;
       'Validate v6 state') "$script_dir/validate-v6.sh"; pause ;;
       Exit) exit 0 ;;
