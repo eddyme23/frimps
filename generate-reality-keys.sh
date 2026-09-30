@@ -5,12 +5,14 @@ state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
 key_file="$state_dir/reality.env"
 target="${V6_REALITY_TARGET:-}"
 server_name="${V6_REALITY_SERVER_NAME:-}"
+fingerprint="${V6_REALITY_FINGERPRINT:-chrome}"
 
 die() { echo "v6 REALITY: $*" >&2; exit 1; }
 [[ "${EUID}" -eq 0 ]] || die "run as root"
 command -v xray >/dev/null 2>&1 || die "xray is required"
 command -v openssl >/dev/null 2>&1 || die "openssl is required"
 [[ -n "$target" && -n "$server_name" ]] || die "set V6_REALITY_TARGET and V6_REALITY_SERVER_NAME"
+[[ "$fingerprint" =~ ^(chrome|firefox|safari|edge|android|ios)$ ]] || die "unsupported REALITY fingerprint"
 install -d -m 700 "$state_dir"
 
 if [[ -s "$key_file" ]]; then
@@ -40,6 +42,6 @@ umask 077
 chmod 600 "$key_file"
 
 cat > "$state_dir/reality-client-info.json" <<EOF
-{"publicKey":"$public_key","shortId":"$short_id","target":"$target","serverName":"$server_name","fingerprint":"chrome"}
+{"publicKey":"$public_key","shortId":"$short_id","target":"$target","serverName":"$server_name","fingerprint":"$fingerprint"}
 EOF
 chmod 600 "$state_dir/reality-client-info.json"

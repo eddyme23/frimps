@@ -102,7 +102,7 @@ case "$action" in
       if [[ -s "$state_dir/reality.env" ]]; then
         # shellcheck disable=SC1090
         source "$state_dir/reality.env"
-        printf 'vless://%s@%s:443?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&sni=%s&pbk=%s&sid=%s&fp=chrome#%s-VLESS-REALITY-Vision\n\n' "$uuid" "$domain" "$REALITY_SERVER_NAME" "$REALITY_PUBLIC_KEY" "$REALITY_SHORT_ID" "$user"
+        printf 'vless://%s@%s:443?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&sni=%s&pbk=%s&sid=%s&fp=%s#%s-VLESS-REALITY-Vision\n\n' "$uuid" "$domain" "$REALITY_SERVER_NAME" "$REALITY_PUBLIC_KEY" "$REALITY_SHORT_ID" "${V6_STORED_REALITY_FINGERPRINT:-chrome}" "$user"
       fi
     fi
     exit 0

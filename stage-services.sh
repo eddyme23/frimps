@@ -102,9 +102,15 @@ install -d -m 755 /etc/letsencrypt/renewal-hooks/deploy
 cat > /etc/letsencrypt/renewal-hooks/deploy/ssh-xray-websocket-v6-reload.sh <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-# tlsmux and the TLS-Vision Xray inbound load certificate files at startup.
-systemctl try-restart ssh-xray-websocket-v6-tlsmux.service
-systemctl try-restart ssh-xray-websocket-v6-xray.service
+# These listeners load certificate files at startup. try-restart is safe for
+# optional services that have not been installed on a particular server.
+for unit in \
+  ssh-xray-websocket-v6-tlsmux.service \
+  ssh-xray-websocket-v6-xray.service \
+  hysteria1-server.service hysteria2-server.service zivpn.service \
+  frimps-openvpn-stunnel.service; do
+  systemctl try-restart "$unit" || true
+done
 EOF
 chmod 755 /etc/letsencrypt/renewal-hooks/deploy/ssh-xray-websocket-v6-reload.sh
 cat > "$state_dir/STAGED.md" <<EOF

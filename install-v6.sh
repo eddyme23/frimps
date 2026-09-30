@@ -52,6 +52,7 @@ umask 077
   printf 'V6_STORED_VISION_DOMAIN=%q\n' "${V6_VISION_DOMAIN:-vision.$domain}"
   printf 'V6_STORED_CERT_FILE=%q\n' "${V6_CERT_FILE:-/etc/certificates/main.crt}"
   printf 'V6_STORED_KEY_FILE=%q\n' "${V6_KEY_FILE:-/etc/certificates/main.key}"
+  printf 'V6_STORED_REALITY_FINGERPRINT=%q\n' "${V6_REALITY_FINGERPRINT:-chrome}"
 } > "$state_dir/runtime.env"
 chmod 600 "$state_dir/runtime.env"
 
