@@ -5,7 +5,10 @@ die(){ echo "v6 Hysteria 2: $*" >&2; exit 1; }
 [[ $EUID -eq 0 ]] || die 'run as root'
 command -v hysteria >/dev/null || die 'install the verified official hysteria binary first'
 command -v jq >/dev/null || die 'install jq'
-[[ -s "${V6_CERT_FILE:-/etc/certificates/main.crt}" && -s "${V6_KEY_FILE:-/etc/certificates/main.key}" ]] || die 'set V6_CERT_FILE and V6_KEY_FILE'
+[[ -r "$state_dir/runtime.env" ]] && source "$state_dir/runtime.env"
+cert_file="${V6_CERT_FILE:-${V6_STORED_CERT_FILE:-/etc/certificates/main.crt}}"
+key_file="${V6_KEY_FILE:-${V6_STORED_KEY_FILE:-/etc/certificates/main.key}}"
+[[ -s "$cert_file" && -s "$key_file" ]] || die 'saved certificate paths are missing; run install-v6.sh with V6_CERT_FILE and V6_KEY_FILE'
 install -d -m 700 "$state_dir" /etc/hysteria2 /etc/hysteria2/clients
 [[ -f "$state_dir/hysteria2-users.json" ]] || printf '[]\n' > "$state_dir/hysteria2-users.json"
 chmod 600 "$state_dir/hysteria2-users.json"

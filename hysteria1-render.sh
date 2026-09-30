@@ -3,9 +3,10 @@ set -euo pipefail
 state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
 store="$state_dir/hysteria1-users.json"
 config=/etc/hysteria1/config.json
-cert_file="${V6_CERT_FILE:-/etc/certificates/main.crt}"
-key_file="${V6_KEY_FILE:-/etc/certificates/main.key}"
+[[ -r "$state_dir/runtime.env" ]] && source "$state_dir/runtime.env"
 [[ -r "$state_dir/service-options.env" ]] && source "$state_dir/service-options.env"
+cert_file="${V6_CERT_FILE:-${V6_STORED_CERT_FILE:-/etc/certificates/main.crt}}"
+key_file="${V6_KEY_FILE:-${V6_STORED_KEY_FILE:-/etc/certificates/main.key}}"
 [[ -r "$state_dir/hysteria1-speeds.env" ]] && source "$state_dir/hysteria1-speeds.env"
 obfs="${V6_HYSTERIA1_OBFS:-frEddxx}"
 # These are server-side, per-client ceilings.  Client URI values remain
