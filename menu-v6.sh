@@ -44,8 +44,8 @@ show_ports() {
   line
   printf '              %b>>>>  🐉  FRIMPS  ★  PLUS  🐉  <<<<%b\n' "$YELLOW" "$NC"
   line
-  printf '  %bOS:%b   %-18s  %bArch:%b  %-14s  %bCores:%b  %s\n' "$WHITE" "$NC" "$os_name" "$WHITE" "$NC" "$arch" "$WHITE" "$NC" "$cores"
-  printf '  %bDomain:%b %-18s  %bTime:%b  %-14s  %bStatus:%b %bONLINE%b\n' "$WHITE" "$NC" "$domain" "$WHITE" "$NC" "$now" "$WHITE" "$NC" "$GREEN" "$NC"
+  printf '  %bOS:%b   %-18s%bArch:%b  %-15s%bCores:%b  %s\n' "$WHITE" "$NC" "$os_name" "$WHITE" "$NC" "$arch" "$WHITE" "$NC" "$cores"
+  printf '  %bDomain:%b   %-17s%bTime:%b  %-15s%bStatus:%b %bONLINE%b\n' "$WHITE" "$NC" "$domain" "$WHITE" "$NC" "$now" "$WHITE" "$NC" "$GREEN" "$NC"
   printf '%b--------------------------- PROTOCOL PORTS --------------------------%b\n' "$RED" "$NC"
   printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'SSH:' '22, 143' "$WHITE" "$NC" 'System-DNS:' '53'
   printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'Dropbear:' '143' "$WHITE" "$NC" 'WEB-Nginx:' '80 / 443'
@@ -118,16 +118,17 @@ wireguard_menu() {
 openvpn_menu() {
   while true; do
     clear; menu_title 'OPENVPN ACCOUNT MANAGEMENT'
-    item 1 'Create OpenVPN account'; item 2 'Renew OpenVPN account'; item 3 'Delete OpenVPN account'; item 4 'List OpenVPN accounts'; item 5 'Show UDP profile'; item 6 'Show TCP profile'; item 7 'Show universal profile'; back_item
+    item 1 'Create OpenVPN account'; item 2 'Renew OpenVPN account'; item 3 'Reset OpenVPN password'; item 4 'Delete OpenVPN account'; item 5 'List OpenVPN accounts'; item 6 'Show generator details'; item 7 'Show generic .ovpn profile'; item 8 'Remove expired OpenVPN accounts'; back_item
     read -r -p '  ► Option: ' x
     case "$x" in
       1) ask_account; V6_DOMAIN="$(primary_domain)" bash "$script_dir/openvpn-accounts.sh" create "$account" "$validity"; pause ;;
       2) pick_account_store "$state_dir/openvpn-users.json" name OpenVPN && { read -r -p 'Validity (days): ' validity; bash "$script_dir/openvpn-accounts.sh" renew "$account" "$validity"; }; pause ;;
-      3) pick_account_store "$state_dir/openvpn-users.json" name OpenVPN && bash "$script_dir/openvpn-accounts.sh" delete "$account"; pause ;;
-      4) bash "$script_dir/openvpn-accounts.sh" list; pause ;;
-      5) pick_account_store "$state_dir/openvpn-users.json" name OpenVPN && bash "$script_dir/openvpn-accounts.sh" profile "$account" udp; pause ;;
-      6) pick_account_store "$state_dir/openvpn-users.json" name OpenVPN && bash "$script_dir/openvpn-accounts.sh" profile "$account" tcp; pause ;;
+      3) pick_account_store "$state_dir/openvpn-users.json" name OpenVPN && bash "$script_dir/openvpn-accounts.sh" reset-password "$account"; pause ;;
+      4) pick_account_store "$state_dir/openvpn-users.json" name OpenVPN && bash "$script_dir/openvpn-accounts.sh" delete "$account"; pause ;;
+      5) bash "$script_dir/openvpn-accounts.sh" list; pause ;;
+      6) bash "$script_dir/openvpn-accounts.sh" generator; pause ;;
       7) cat /etc/openvpn/client-template.ovpn 2>/dev/null || echo 'OpenVPN is not installed.'; pause ;;
+      8) bash "$script_dir/openvpn-accounts.sh" cleanup; pause ;;
       0) return ;; *) echo 'Invalid option.'; sleep 1 ;;
     esac
   done
@@ -232,9 +233,9 @@ trojan_menu() {
 
 ssh_menu() {
   while true; do
-    clear; menu_title 'SSH ACCOUNT MANAGEMENT'; item 1 'Create SSH account'; item 2 'Renew SSH account'; item 3 'Delete SSH account'; item 4 'List SSH accounts'; item 5 'SlowDNS / UDP Custom supporting service status'; back_item
+    clear; menu_title 'SSH ACCOUNT MANAGEMENT'; item 1 'Create SSH account'; item 2 'Renew SSH account'; item 3 'Delete SSH account'; item 4 'List SSH accounts'; back_item
     read -r -p '  ► Option: ' x
-    case "$x" in 1) ask_account; bash "$script_dir/ssh-accounts.sh" create "$account" "$validity"; pause;; 2) ask_account; bash "$script_dir/ssh-accounts.sh" renew "$account" "$validity"; pause;; 3) bash "$script_dir/ssh-accounts.sh" choose-delete; pause;; 4) bash "$script_dir/ssh-accounts.sh" list; pause;; 5) systemctl --no-pager --full status frimps-slowdns.service frimps-badvpn.service frimps-udp-custom.service; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac
+    case "$x" in 1) ask_account; bash "$script_dir/ssh-accounts.sh" create "$account" "$validity"; pause;; 2) ask_account; bash "$script_dir/ssh-accounts.sh" renew "$account" "$validity"; pause;; 3) bash "$script_dir/ssh-accounts.sh" choose-delete; pause;; 4) bash "$script_dir/ssh-accounts.sh" list; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac
   done
 }
 

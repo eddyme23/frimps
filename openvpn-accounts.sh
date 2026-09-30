@@ -40,11 +40,18 @@ EOF
     unset password
     echo "Per-account profiles: $clients/$name-{udp,tcp}.ovpn" ;;
   renew)
-    days="${3:-}"; [[ "$days" =~ ^[1-9][0-9]{0,3}$ ]] || die 'invalid days'; expiry="$(date -u -d "+$days days" +%F)"
+    days="${3:-}"; [[ "$days" =~ ^[1-9][0-9]{0,3}$ ]] || die 'invalid days'
     jq -e --arg n "$name" '.[] | select(.name == $n)' "$store" >/dev/null || die 'account not found'
+    today="$(date -u +%F)"; current="$(jq -r --arg n "$name" '.[] | select(.name == $n) | .expiresAt' "$store")"; base="$today"; [[ "$current" > "$today" ]] && base="$current"; expiry="$(date -u -d "$base +$days days" +%F)"
     commit "$(jq --arg n "$name" --arg e "$expiry" 'map(if .name == $n then .expiresAt = $e else . end)' "$store")" ;;
+  reset-password)
+    valid "$name" || die 'invalid username'; jq -e --arg n "$name" '.[] | select(.name == $n)' "$store" >/dev/null || die 'account not found'
+    read -r -p 'New password: ' password; [[ -n "$password" ]] || die 'empty passwords are not allowed'
+    hash="$(openssl passwd -6 "$password")"; commit "$(jq --arg n "$name" --arg h "$hash" 'map(if .name == $n then .passwordHash = $h else . end)' "$store")"; printf 'OpenVPN password reset\nUsername: %s\nPassword: %s\n' "$name" "$password"; unset password hash ;;
   delete) commit "$(jq --arg n "$name" 'map(select(.name != $n))' "$store")"; rm -f "$clients/$name-"*.ovpn ;;
   list) jq -r '.[] | [.name,.expiresAt] | @tsv' "$store" | column -t -N NAME,EXPIRES ;;
   profile) cat "$clients/$name-${3:-udp}.ovpn" ;;
-  *) die 'usage: openvpn-accounts.sh {create NAME DAYS|renew NAME DAYS|delete NAME|list|profile NAME [udp|tcp]}' ;;
+  generator) printf '═══ OPENVPN GENERATOR DETAILS ═══\nHost: %s\nUDP/TCP: 1194\nSSL Direct / Payload: 8433\nBShield WS: 80, 8080, 8880 path /openvpn\nAuthentication: username and password\n' "${V6_DOMAIN:-$(jq -r '.primaryDomain' "$state_dir/routes.json")}" ;;
+  cleanup) today="$(date -u +%F)"; mapfile -t expired < <(jq -r --arg d "$today" '.[] | select(.expiresAt < $d) | .name' "$store"); for name in "${expired[@]}"; do [[ -n "$name" ]] && "$0" delete "$name"; done; echo "Removed ${#expired[@]} expired OpenVPN account(s)." ;;
+  *) die 'usage: openvpn-accounts.sh {create NAME DAYS|renew NAME DAYS|reset-password NAME|delete NAME|list|profile NAME [udp|tcp]|generator|cleanup}' ;;
 esac
