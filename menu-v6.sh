@@ -199,6 +199,7 @@ zivpn_menu() {
 slowdns_menu() { clear; bash "$script_dir/slowdns-install.sh"; read -r -p 'Enable SlowDNS now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-slowdns.service; pause; }
 udp_custom_menu() { clear; bash "$script_dir/udp-custom-install.sh"; read -r -p 'Enable UDP Custom now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-badvpn.service frimps-udp-custom.service; pause; }
 utilities_menu() { while true; do clear; echo '═══ SYSTEM UTILITIES ═══'; echo '  [1] BBR status'; echo '  [2] Enable native kernel BBR'; echo '  [3] Netflix / streaming region check'; echo '  [0] Back'; read -r -p '  ► Option: ' x; case "$x" in 1) bash "$script_dir/utilities-v6.sh" status; pause;; 2) bash "$script_dir/utilities-v6.sh" enable-bbr; pause;; 3) bash "$script_dir/utilities-v6.sh" netflix; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac; done; }
+maintenance_menu() { while true; do clear; echo '═══ FRIMPS MAINTENANCE ═══'; echo '  [1] Monitor active connections'; echo '  [2] Restart SSH services'; echo '  [3] Restart Xray services'; echo '  [4] Restart UDP services'; echo '  [5] Restart OpenVPN services'; echo '  [6] Restart WireGuard'; echo '  [7] Restart all Frimps services'; echo '  [8] Create managed-state backup'; echo '  [9] Remove expired managed accounts'; echo '  [10] Reboot server'; echo '  [0] Back'; read -r -p '  ► Option: ' x; case "$x" in 1) bash "$script_dir/maintenance-v6.sh" monitor; pause;; 2) bash "$script_dir/maintenance-v6.sh" restart ssh; pause;; 3) bash "$script_dir/maintenance-v6.sh" restart xray; pause;; 4) bash "$script_dir/maintenance-v6.sh" restart udp; pause;; 5) bash "$script_dir/maintenance-v6.sh" restart openvpn; pause;; 6) bash "$script_dir/maintenance-v6.sh" restart wireguard; pause;; 7) read -r -p 'Restart all managed services? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && bash "$script_dir/maintenance-v6.sh" restart all; pause;; 8) bash "$script_dir/maintenance-v6.sh" backup; pause;; 9) read -r -p 'Remove expired managed accounts? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && bash "$script_dir/maintenance-v6.sh" cleanup; pause;; 10) read -r -p 'Reboot server now? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && reboot; return;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac; done; }
 
 xray_menu() {
   while true; do
@@ -290,6 +291,7 @@ while true; do
   echo '  [11] Validate Frimps State'
   echo '  [12] Advanced: Stage Remaining-Service Foundation'
   echo '  [13] System Utilities (BBR / Netflix)'
+  echo '  [14] Maintenance (monitor / restart / backup / cleanup)'
   echo '  [00] Exit'
   echo
   read -r -p '  ► Select an option: ' choice
@@ -307,6 +309,7 @@ while true; do
     11) "$script_dir/validate-v6.sh"; pause ;;
     12) remaining_services_menu ;;
     13) utilities_menu ;;
+    14) maintenance_menu ;;
     0|00) exit 0 ;;
     *) echo 'Invalid option.'; sleep 1 ;;
   esac
