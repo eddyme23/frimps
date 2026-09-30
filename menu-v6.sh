@@ -12,7 +12,7 @@ state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
 # GF visual language, kept terminal-safe: colour is disabled when output is
 # redirected so account links and scripts remain clean plain text.
 if [[ -t 1 && "${TERM:-dumb}" != dumb ]]; then
-  RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; BLUE=$'\033[0;34m'; CYAN=$'\033[0;36m'; WHITE=$'\033[1;37m'; BOLD=$'\033[1m'; NC=$'\033[0m'
+  RED=$'\033[1;31m'; GREEN=$'\033[1;32m'; YELLOW=$'\033[1;33m'; BLUE=$'\033[1;34m'; CYAN=$'\033[1;36m'; WHITE=$'\033[1;37m'; BOLD=$'\033[1m'; NC=$'\033[0m'
 else
   RED= GREEN= YELLOW= BLUE= CYAN= WHITE= BOLD= NC=
 fi

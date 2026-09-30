@@ -17,6 +17,8 @@ After=network-online.target
 [Service]
 ExecStart=/usr/local/bin/hysteria server --config /etc/hysteria2/config.yaml
 Restart=on-failure
+StandardOutput=journal
+StandardError=journal
 NoNewPrivileges=true
 PrivateTmp=true
 [Install]

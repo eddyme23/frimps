@@ -21,8 +21,13 @@ cat >/etc/systemd/system/frimps-badvpn.service <<'EOF'
 Description=frimps BadVPN UDP gateway
 After=network-online.target
 [Service]
-ExecStart=/usr/local/bin/badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 1000 --max-connections-for-client 1000
-Restart=on-failure
+# Match the GF BadVPN profile: it is only a local UDP-Custom upstream, so a
+# modest per-client limit prevents malformed traffic from consuming memory.
+ExecStart=/usr/local/bin/badvpn-udpgw --loglevel none --listen-addr 127.0.0.1:7300 --max-clients 1000 --max-connections-for-client 10
+Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
 [Install]
 WantedBy=multi-user.target
 EOF
@@ -33,7 +38,10 @@ After=network-online.target ssh-xray-websocket-v6-udp-routing.service frimps-bad
 Requires=ssh-xray-websocket-v6-udp-routing.service
 [Service]
 ExecStart=/etc/frimps-udp-custom/udp-custom server -c /etc/frimps-udp-custom/config.json
-Restart=on-failure
+Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
 [Install]
 WantedBy=multi-user.target
 EOF

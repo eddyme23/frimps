@@ -19,6 +19,8 @@ Requires=ssh-xray-websocket-v6-udp-routing.service
 [Service]
 ExecStart=$sing_box_bin run -c /etc/hysteria1/config.json
 Restart=on-failure
+StandardOutput=journal
+StandardError=journal
 NoNewPrivileges=true
 PrivateTmp=true
 [Install]
