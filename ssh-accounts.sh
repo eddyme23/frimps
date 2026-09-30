@@ -7,6 +7,12 @@ action="${1:-}"
 user="${2:-}"
 days="${3:-}"
 
+if [[ -t 1 && "${TERM:-dumb}" != dumb ]]; then
+  RED=$'\033[1;31m'; GREEN=$'\033[1;32m'; YELLOW=$'\033[1;33m'; CYAN=$'\033[1;36m'; WHITE=$'\033[1;37m'; BOLD=$'\033[1m'; NC=$'\033[0m'
+else
+  RED= GREEN= YELLOW= CYAN= WHITE= BOLD= NC=
+fi
+
 die() { echo "v6 SSH accounts: $*" >&2; exit 1; }
 [[ "${EUID}" -eq 0 ]] || die "run as root"
 command -v jq >/dev/null 2>&1 || die "jq is required"
@@ -57,7 +63,22 @@ case "$action" in
     commit "$(jq --arg name "$user" --arg expiry "$expiry" '. + [{name:$name,expiresAt:$expiry}]' "$store")"
     domain="$(jq -r '.primaryDomain // empty' "$state_dir/routes.json")"
     slowdns_ns='Not configured'; [[ -r "$state_dir/service-options.env" ]] && source "$state_dir/service-options.env" && slowdns_ns="${V6_SLOWDNS_NS:-$slowdns_ns}"
-    printf '\n═══ SSH ACCOUNT CREATED ═══\nHost: %s\nUsername: %s\nPassword: %s\nExpiry: %s\n------------------------------------------------\nSSH: 22, 143 | Payload/WS: 80, 8080, 8880 | TLS: 443\nSlowDNS: UDP 53 | NS: %s\nUDP Custom: remaining UDP ports\n------------------------------------------------\nHTTP Payload: GET / HTTP/1.1[crlf]Host: %s[crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf][crlf]\nEnhanced Payload: GET / HTTP/1.1[crlf]Host: bug.com[crlf][crlf]PATCH / HTTP/1.1[crlf]Host: %s[crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf][crlf]\n' "$domain" "$user" "$password" "$expiry" "$slowdns_ns" "$domain" "$domain"
+    printf '\n%b══════════════════════════════════════════════════════════════%b\n' "$GREEN" "$NC"
+    printf '                   %bACCOUNT CREATED SUCCESSFULLY%b\n' "$BOLD" "$NC"
+    printf '%b══════════════════════════════════════════════════════════════%b\n' "$GREEN" "$NC"
+    printf '  %bDomain/Host%b: %b%s%b\n' "$WHITE" "$NC" "$YELLOW" "$domain" "$NC"
+    printf '  %bUsername%b   : %b%s%b\n' "$WHITE" "$NC" "$YELLOW" "$user" "$NC"
+    printf '  %bPassword%b   : %b%s%b\n' "$WHITE" "$NC" "$YELLOW" "$password" "$NC"
+    printf '  %bExpiry%b     : %b%s%b\n' "$WHITE" "$NC" "$YELLOW" "$expiry" "$NC"
+    printf '%b--------------------------------------------------------------%b\n' "$CYAN" "$NC"
+    printf '  SSH Port   : 22, 143\n  Dropbear   : 80\n  SSL/TLS    : 443\n  SSL/WS     : 443\n  WebSocket  : 80, 8080, 8880, 2082, 2086\n  SlowDNS    : 53, 5300\n  UDP Custom : remaining UDP ports\n'
+    printf '%b--------------------------------------------------------------%b\n' "$CYAN" "$NC"
+    printf '  %bPayload HTTP:%b\n  %bGET / HTTP/1.1[crlf]Host: %s[crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf][crlf]%b\n\n' "$BOLD" "$NC" "$YELLOW" "$domain" "$NC"
+    printf '  %bPayload Enhanced:%b\n  %bGET / HTTP/1.1[crlf]Host: bug.com[crlf][crlf]PATCH / HTTP/1.1[crlf]Host: %s[crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf][crlf]%b\n' "$BOLD" "$NC" "$YELLOW" "$domain" "$NC"
+    printf '%b--------------------------------------------------------------%b\n' "$CYAN" "$NC"
+    printf '  %bSlowDNS NS%b : %b%s%b\n' "$WHITE" "$NC" "$YELLOW" "$slowdns_ns" "$NC"
+    printf '  %bDNS PUB KEY%b: %b7fbd1f8aa0abfe15a7903e837f78aba39cf61d36f183bd604daa2fe4ef3b7b59%b\n' "$WHITE" "$NC" "$YELLOW" "$NC"
+    printf '%b══════════════════════════════════════════════════════════════%b\n' "$GREEN" "$NC"
     unset password hash
     ;;
   renew)
