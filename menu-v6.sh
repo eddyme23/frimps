@@ -13,7 +13,8 @@ pause() { read -r -p 'Press Enter to continue... ' _; }
 ask_account() { read -r -p 'Username: ' account; read -r -p 'Validity (days): ' validity; }
 primary_domain() { jq -r '.primaryDomain' "$state_dir/routes.json"; }
 load_service_options() { [[ -r "$state_dir/service-options.env" ]] && source "$state_dir/service-options.env"; }
-pick_xray_account() { local protocol="$1" store; store="$state_dir/${protocol}-users.json"; mapfile -t names < <(jq -r '.[].name' "$store" 2>/dev/null); ((${#names[@]})) || { echo 'No accounts found.'; return 1; }; local i=1; for name in "${names[@]}"; do printf '  [%02d] %s\n' "$i" "$name"; ((i++)); done; echo '  [00] Back'; read -r -p '  ► Account: ' i; [[ "$i" =~ ^[0-9]+$ ]] && ((i>0 && i<=${#names[@]})) || return 1; account="${names[$((i-1))]}"; }
+load_runtime() { [[ -r "$state_dir/runtime.env" ]] && source "$state_dir/runtime.env"; export V6_CERT_FILE="${V6_CERT_FILE:-${V6_STORED_CERT_FILE:-}}" V6_KEY_FILE="${V6_KEY_FILE:-${V6_STORED_KEY_FILE:-}}"; }
+pick_xray_account() { local protocol="$1" store; store="$state_dir/users/${protocol}.json"; mapfile -t names < <(jq -r '.[].name' "$store" 2>/dev/null); ((${#names[@]})) || { echo 'No accounts found.'; return 1; }; local i=1; for name in "${names[@]}"; do printf '  [%02d] %s\n' "$i" "$name"; ((i++)); done; echo '  [00] Back'; read -r -p '  ► Account: ' i; [[ "$i" =~ ^[0-9]+$ ]] && ((i>0 && i<=${#names[@]})) || return 1; account="${names[$((i-1))]}"; }
 
 show_ports() {
   clear
@@ -55,7 +56,7 @@ status_menu() {
   clear
   echo '═══ V6 SERVICE STATUS ═══'
   echo
-  for unit in ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-payloadgate ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-gfraw ssh-xray-websocket-v6-udp-routing frimps-openvpn-udp frimps-openvpn-tcp frimps-openvpn-gateway frimps-openvpn-stunnel frimps-openvpn-bshield hysteria1-server hysteria2-server wg-quick@wg0 nginx haproxy; do
+  for unit in ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-payloadgate ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-gfraw ssh-xray-websocket-v6-udp-routing frimps-openvpn-udp frimps-openvpn-tcp frimps-openvpn-gateway frimps-openvpn-stunnel frimps-openvpn-bshield hysteria1-server hysteria2-server wg-quick@wg0 frimps-slowdns zivpn frimps-badvpn frimps-udp-custom nginx haproxy; do
     printf '%-42s %s\n' "$unit" "$(systemctl is-active "$unit" 2>/dev/null || true)"
   done
   echo
@@ -169,7 +170,30 @@ settings_menu() {
   pause
 }
 
-zivpn_menu() { clear; load_service_options; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-install.sh"; read -r -p 'Enable ZiVPN now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now zivpn.service; pause; }
+zivpn_menu() {
+  while true; do
+    clear
+    echo '═══ ZIVPN ACCOUNT MANAGEMENT ═══'
+    echo '  [1] Install / reconfigure backend'
+    echo '  [2] Create account'
+    echo '  [3] Renew account'
+    echo '  [4] Delete account'
+    echo '  [5] List accounts'
+    echo '  [6] Service status'
+    echo '  [0] Back'
+    read -r -p '  ► Option: ' x
+    case "$x" in
+      1) load_runtime; load_service_options; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-install.sh"; systemctl enable --now zivpn.service; pause ;;
+      2) read -r -p 'Password / username: ' account; read -r -p 'Validity (days): ' validity; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-accounts.sh" create "$account" "$validity"; pause ;;
+      3) read -r -p 'Password / username: ' account; read -r -p 'Validity (days): ' validity; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-accounts.sh" renew "$account" "$validity"; pause ;;
+      4) read -r -p 'Password / username: ' account; bash "$script_dir/zivpn-accounts.sh" delete "$account"; pause ;;
+      5) bash "$script_dir/zivpn-accounts.sh" list; pause ;;
+      6) systemctl --no-pager --full status zivpn.service; pause ;;
+      0) return ;;
+      *) echo 'Invalid option.'; sleep 1 ;;
+    esac
+  done
+}
 slowdns_menu() { clear; bash "$script_dir/slowdns-install.sh"; read -r -p 'Enable SlowDNS now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-slowdns.service; pause; }
 udp_custom_menu() { clear; bash "$script_dir/udp-custom-install.sh"; read -r -p 'Enable UDP Custom now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-badvpn.service frimps-udp-custom.service; pause; }
 utilities_menu() { while true; do clear; echo '═══ SYSTEM UTILITIES ═══'; echo '  [1] BBR status'; echo '  [2] Enable native kernel BBR'; echo '  [3] Netflix / streaming region check'; echo '  [0] Back'; read -r -p '  ► Option: ' x; case "$x" in 1) bash "$script_dir/utilities-v6.sh" status; pause;; 2) bash "$script_dir/utilities-v6.sh" enable-bbr; pause;; 3) bash "$script_dir/utilities-v6.sh" netflix; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac; done; }
@@ -248,6 +272,7 @@ ssh_menu() {
 }
 
 while true; do
+  load_runtime
   show_ports
   echo
   echo '  [01] SSH Account Management'
@@ -261,7 +286,7 @@ while true; do
   echo '  [09] UDP Custom Management'
   echo '  [10] Service Status'
   echo '  [11] Validate Frimps State'
-  echo '  [12] Stage Remaining-Service Foundation'
+  echo '  [12] Advanced: Stage Remaining-Service Foundation'
   echo '  [13] System Utilities (BBR / Netflix)'
   echo '  [00] Exit'
   echo
