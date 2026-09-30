@@ -122,21 +122,23 @@ openvpn_menu() {
 
 hysteria1_menu() {
   while true; do
-    clear; echo '═══ HYSTERIA 1 MANAGEMENT ═══'
-    select choice in 'Configure installed sing-box backend' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show link' 'Back'; do
-      [[ "$REPLY" == 0 ]] && return
-      case "$choice" in
-        'Configure installed sing-box backend') load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria1-install.sh"; pause ;;
-        'Create account') ask_account; load_service_options; read -r -p 'Account password (Enter for generated password): ' password; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria1-accounts.sh" create "$account" "$validity" "${password:-$(openssl rand -hex 12)}"; unset password; pause ;;
-        'Renew account') ask_account; "$script_dir/hysteria1-accounts.sh" renew "$account" "$validity"; pause ;;
-        'Delete account') read -r -p 'Username: ' account; "$script_dir/hysteria1-accounts.sh" delete "$account"; pause ;;
-        'List accounts') "$script_dir/hysteria1-accounts.sh" list; pause ;;
-        'Show link') read -r -p 'Username: ' account; "$script_dir/hysteria1-accounts.sh" uri "$account"; pause ;;
-        Back) return ;;
-        *) echo 'Choose a listed option.' ;;
-      esac
-      break
-    done
+    clear; echo '═══ HYSTERIA 1 ACCOUNT MANAGEMENT ═══'
+    echo '  [1] Create Hysteria 1 account'
+    echo '  [2] Renew Hysteria 1 account'
+    echo '  [3] Delete Hysteria 1 account'
+    echo '  [4] List Hysteria 1 accounts'
+    echo '  [5] Edit Hysteria 1 speeds'
+    echo '  [0] Back'
+    read -r -p '  ► Option: ' x
+    case "$x" in
+      1) ask_account; load_service_options; read -r -p 'Account password (Enter for generated password): ' password; V6_DOMAIN="$(primary_domain)" bash "$script_dir/hysteria1-accounts.sh" create "$account" "$validity" "${password:-$(openssl rand -hex 12)}"; unset password; pause ;;
+      2) ask_account; bash "$script_dir/hysteria1-accounts.sh" renew "$account" "$validity"; pause ;;
+      3) read -r -p 'Username: ' account; bash "$script_dir/hysteria1-accounts.sh" delete "$account"; pause ;;
+      4) bash "$script_dir/hysteria1-accounts.sh" list; pause ;;
+      5) read -r -p 'Upload Mbps: ' up; read -r -p 'Download Mbps: ' down; bash "$script_dir/hysteria1-accounts.sh" speed "$up" "$down"; pause ;;
+      0) return ;;
+      *) echo 'Invalid option.'; sleep 1 ;;
+    esac
   done
 }
 

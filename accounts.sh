@@ -78,21 +78,25 @@ case "$action" in
     [[ -n "$entry" ]] || die "account does not exist"
     if [[ "$protocol" == "trojan" ]]; then
       password="$(jq -r '.password' <<<"$entry")"
+      printf '\n═══ TROJAN TLS / WEBSOCKET ═══\n\n'
       printf 'trojan://%s@%s:443?type=ws&security=tls&sni=%s&host=%s&path=%%2Ftrojan#%s-Trojan\n' "$password" "$domain" "$domain" "$domain" "$user"
     else
       # shellcheck disable=SC1090
       source "$keys"
       uuid="$(jq -r '.uuid' <<<"$entry")"
+      printf '\n═══ VLESS TLS / SHARED PORT 443 ═══\n\n'
       printf 'vless://%s@%s:443?type=tcp&headerType=http&security=tls&encryption=none&host=%s&path=%%2Fvless-tcp&sni=%s#%s-VLESS-TCP-HTTP-TLS\n' "$uuid" "$domain" "$domain" "$domain" "$user"
       printf 'vless://%s@%s:443?type=ws&security=tls&encryption=none&sni=%s&host=%s&path=%%2Fvltls#%s-VLESS-WS-TLS\n' "$uuid" "$domain" "$domain" "$domain" "$user"
       printf 'vless://%s@%s:443?type=xhttp&security=tls&encryption=none&sni=%s&host=%s&path=%%2Fvlxhttp&mode=auto&alpn=h2%%2Chttp%%2F1.1#%s-VLESS-XHTTP-TLS\n' "$uuid" "$domain" "$domain" "$domain" "$user"
       printf 'vless://%s@%s:443?type=httpupgrade&security=tls&encryption=none&sni=%s&host=%s&path=%%2Fvlhu&alpn=http%%2F1.1#%s-VLESS-HTTPUpgrade-TLS\n' "$uuid" "$domain" "$domain" "$domain" "$user"
       printf 'vless://%s@%s:443?type=grpc&security=tls&encryption=none&sni=%s&serviceName=vlgrpc&alpn=h2#%s-VLESS-gRPC-TLS\n' "$uuid" "$domain" "$domain" "$user"
+      printf '\n═══ VLESS ENCRYPTED NTLS / 80, 8080, 8880 ═══\n\n'
       for port in 80 8080 8880; do
         printf 'vless://%s@%s:%s?type=tcp&headerType=http&security=none&encryption=%s&host=%s&path=%%2Fvless-tcp#%s-VLESS-Encrypted-NTLS-TCP-%s\n' "$uuid" "$domain" "$port" "$VLESS_NTLS_ENCRYPTION" "$domain" "$user" "$port"
         printf 'vless://%s@%s:%s?type=ws&security=none&encryption=%s&host=%s&path=%%2Fvlntls#%s-VLESS-Encrypted-NTLS-%s\n' "$uuid" "$domain" "$port" "$VLESS_NTLS_ENCRYPTION" "$domain" "$user" "$port"
         printf 'vless://%s@%s:%s?type=httpupgrade&security=none&encryption=%s&host=%s&path=%%2Fvlhu#%s-VLESS-Encrypted-NTLS-HTTPUpgrade-%s\n' "$uuid" "$domain" "$port" "$VLESS_NTLS_ENCRYPTION" "$domain" "$user" "$port"
       done
+      printf '\n═══ VLESS VISION / REALITY ═══\n\n'
       vision_domain="${V6_VISION_DOMAIN:-${V6_STORED_VISION_DOMAIN:-vision.$domain}}"
       printf 'vless://%s@%s:443?type=tcp&security=tls&encryption=none&flow=xtls-rprx-vision&sni=%s#%s-VLESS-TLS-Vision\n' "$uuid" "$vision_domain" "$vision_domain" "$user"
       if [[ -s "$state_dir/reality.env" ]]; then
