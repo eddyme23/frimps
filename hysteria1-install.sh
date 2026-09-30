@@ -10,6 +10,12 @@ sing_box_bin="$(command -v sing-box)"
 install -d -m 700 "$state_dir" /etc/hysteria1 /etc/hysteria1/clients
 [[ -f "$state_dir/hysteria1-users.json" ]] || printf '[]\n' > "$state_dir/hysteria1-users.json"
 chmod 600 "$state_dir/hysteria1-users.json"
+# Keep an explicit, durable per-client server ceiling.  Do not overwrite an
+# administrator's existing speed choice during a reconfigure or update.
+if [[ ! -s "$state_dir/hysteria1-speeds.env" ]]; then
+  printf 'V6_HYSTERIA1_UP_MBPS=1000\nV6_HYSTERIA1_DOWN_MBPS=1000\n' > "$state_dir/hysteria1-speeds.env"
+  chmod 600 "$state_dir/hysteria1-speeds.env"
+fi
 install -m 700 "$(dirname "$0")/hysteria1-render.sh" /usr/local/libexec/ssh-xray-websocket-v6-hysteria1-render
 cat > /etc/systemd/system/hysteria1-server.service <<EOF
 [Unit]
