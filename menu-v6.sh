@@ -238,23 +238,35 @@ ssh_menu() {
 while true; do
   show_ports
   echo
-  select choice in 'SSH management' 'Xray management' 'Stage remaining-service foundations' 'OpenVPN' 'Hysteria 1' 'Hysteria 2' 'ZiVPN' 'WireGuard' 'SlowDNS / domain' 'UDP Custom' 'Service status' 'Validate v6 state' 'Exit'; do
-    case "$choice" in
-      'SSH management') ssh_menu ;;
-      'Xray management') xray_menu ;;
-      'Stage remaining-service foundations') remaining_services_menu ;;
-      OpenVPN) openvpn_menu ;;
-      'Hysteria 1') hysteria1_menu ;;
-      'Hysteria 2') hysteria2_menu ;;
-      ZiVPN) zivpn_menu ;;
-      WireGuard) wireguard_menu ;;
-      'SlowDNS / domain') settings_menu ;;
-      'UDP Custom') udp_custom_menu ;;
-      'Service status') status_menu ;;
-      'Validate v6 state') "$script_dir/validate-v6.sh"; pause ;;
-      Exit) exit 0 ;;
-      *) echo 'Choose a listed option.' ;;
-    esac
-    break
-  done
+  echo '  [01] SSH Account Management'
+  echo '  [02] Xray Account Management'
+  echo '  [03] Hysteria 1 Account Management'
+  echo '  [04] ZiVPN Account Management'
+  echo '  [05] OpenVPN Account Management'
+  echo '  [06] WireGuard Account Management'
+  echo '  [07] Hysteria 2 Account Management'
+  echo '  [08] SlowDNS / Domain / Obfuscation Settings'
+  echo '  [09] UDP Custom Management'
+  echo '  [10] Service Status'
+  echo '  [11] Validate Frimps State'
+  echo '  [12] Stage Remaining-Service Foundation'
+  echo '  [00] Exit'
+  echo
+  read -r -p '  ► Select an option: ' choice
+  case "$choice" in
+    1|01) ssh_menu ;;
+    2|02) xray_menu ;;
+    3|03) hysteria1_menu ;;
+    4|04) zivpn_menu ;;
+    5|05) openvpn_menu ;;
+    6|06) wireguard_menu ;;
+    7|07) hysteria2_menu ;;
+    8|08) settings_menu ;;
+    9|09) udp_custom_menu ;;
+    10) status_menu ;;
+    11) "$script_dir/validate-v6.sh"; pause ;;
+    12) remaining_services_menu ;;
+    0|00) exit 0 ;;
+    *) echo 'Invalid option.'; sleep 1 ;;
+  esac
 done
