@@ -4,6 +4,7 @@
 set -euo pipefail
 
 state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/ui-v6.sh"
 store="$state_dir/zivpn-users.json"
 config=/etc/zivpn/config.json
 opts="$state_dir/service-options.env"
@@ -47,7 +48,7 @@ case "$action" in
     expiry="$(date -u -d "+$days days" +%F)"
     tmp="$(mktemp "$state_dir/.zivpn-users.XXXXXX")"
     jq --arg p "$password" --arg e "$expiry" '. + [{password:$p,expiresAt:$e}]' "$store" > "$tmp"; commit "$tmp"; render
-    printf '═══ ZIVPN ACCOUNT CREATED ═══\nHost: %s\nPort Range: 6000-19999 UDP\nUser (Pass): %s\nObfs: %s\nExpiry Date: %s\n' "${V6_DOMAIN:-$(jq -r '.primaryDomain' "$state_dir/routes.json")}" "$password" "${V6_ZIVPN_OBFS:-frimps-zivpn}" "$expiry"
+    ui_success_title 'ZIVPN ACCOUNT CREATED'; ui_kv 'Host' "${V6_DOMAIN:-$(jq -r '.primaryDomain' "$state_dir/routes.json")}"; ui_kv 'Port Range' '6000-19999 UDP'; ui_kv 'User (Pass)' "$password"; ui_kv 'Obfs' "${V6_ZIVPN_OBFS:-frimps-zivpn}"; ui_kv 'Expiry Date' "$expiry"; ui_rule
     ;;
   renew)
     valid_password "$password" || die 'invalid password/username'; valid_days "$days" || die 'validity must be a positive number of days'

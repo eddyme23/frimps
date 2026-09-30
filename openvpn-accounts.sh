@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/ui-v6.sh"
 store="$state_dir/openvpn-users.json"
 clients=/etc/openvpn/clients
 die() { echo "v6 OpenVPN: $*" >&2; exit 1; }
@@ -36,7 +37,7 @@ EOF
     sed 's/^proto udp$/proto tcp-client/; s/ 1194$/ 1194/' "$clients/$name-udp.ovpn" > "$clients/$name-tcp.ovpn"
     cp "$clients/$name-tcp.ovpn" "$clients/$name-tunnelguard.ovpn"
     chmod 600 "$clients/$name-"*.ovpn
-    printf '\n═══ OPENVPN ACCOUNT CREATED ═══\nHost: %s\nUsername: %s\nPassword: %s\nExpiry: %s\nUDP/TCP: 1194 | SSL Direct/Payload: 8433 | BShield WS: 80, 8080, 8880 path /openvpn\nUniversal profile: /etc/openvpn/client-template.ovpn\n' "${V6_DOMAIN:?set V6_DOMAIN}" "$name" "$password" "$expiry"
+    ui_success_title 'OPENVPN ACCOUNT CREATED'; ui_kv 'Host' "${V6_DOMAIN:?set V6_DOMAIN}"; ui_kv 'Username' "$name"; ui_kv 'Password' "$password"; ui_kv 'Expiry' "$expiry"; ui_rule; printf '  UDP/TCP: 1194 | SSL Direct/Payload: 8433\n  BShield WS: 80, 8080, 8880 path /openvpn\n  Universal profile: /etc/openvpn/client-template.ovpn\n'; ui_rule
     unset password
     echo "Per-account profiles: $clients/$name-{udp,tcp}.ovpn" ;;
   renew)
