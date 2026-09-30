@@ -21,6 +21,7 @@ line() { printf '%b════════════════════�
 menu_title() { line; printf '                 %b%s%b\n' "$BOLD" "$1" "$NC"; line; }
 item() { printf '  [%b%02d%b] %s\n' "$YELLOW" "$1" "$NC" "$2"; }
 back_item() { printf '  [%b00%b] Back\n' "$YELLOW" "$NC"; }
+port_row() { printf '  %b• %-12s%b %b%-22s%b %b• %-14s%b %b%s%b\n' "$WHITE" "$1" "$NC" "$GREEN" "$2" "$NC" "$WHITE" "$3" "$NC" "$GREEN" "$4" "$NC"; }
 pause() { echo; read -r -p 'Press Enter to continue... ' _; }
 ask_account() { read -r -p 'Username: ' account; read -r -p 'Validity (days): ' validity; }
 primary_domain() { jq -r '.primaryDomain' "$state_dir/routes.json"; }
@@ -47,16 +48,16 @@ show_ports() {
   printf '  %bOS:%b   %-18s%bArch:%b  %-15s%bCores:%b  %s\n' "$WHITE" "$NC" "$os_name" "$WHITE" "$NC" "$arch" "$WHITE" "$NC" "$cores"
   printf '  %bDomain:%b   %-17s%bTime:%b  %-15s%bStatus:%b %bONLINE%b\n' "$WHITE" "$NC" "$domain" "$WHITE" "$NC" "$now" "$WHITE" "$NC" "$GREEN" "$NC"
   printf '%b--------------------------- PROTOCOL PORTS --------------------------%b\n' "$RED" "$NC"
-  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'SSH:' '22, 143' "$WHITE" "$NC" 'System-DNS:' '53'
-  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'Dropbear:' '143' "$WHITE" "$NC" 'WEB-Nginx:' '80 / 443'
-  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'SSL:' '443' "$WHITE" "$NC" 'SSH WS TLS:' '443'
-  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'SSH Payload:' '80, 8080, 8880' "$WHITE" "$NC" 'VLESS/Trojan:' '443'
-  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'SSH WS:' '2082, 2086' "$WHITE" "$NC" 'BadVPN:' '7300'
-  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'Xray NTLS:' '80, 8080, 8880' "$WHITE" "$NC" 'Hysteria 2:' '443 UDP'
-  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'Hysteria 1:' '20000-50000' "$WHITE" "$NC" 'ZiVPN:' '6000-19999'
-  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'UDPCustom:' 'remaining UDP' "$WHITE" "$NC" 'SlowDNS:' '53, 5300'
-  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'OpenVPN:' '1194 TCP/UDP' "$WHITE" "$NC" 'OVPN SSL:' '8433'
-  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'OVPN WS:' '80, 8080, 8880' "$WHITE" "$NC" 'WireGuard:' '4000 UDP'
+  port_row 'SSH:' '22, 143' 'System-DNS:' '53'
+  port_row 'Dropbear:' '143' 'WEB-Nginx:' '80 / 443'
+  port_row 'SSL:' '443' 'SSH WS TLS:' '443'
+  port_row 'SSH Payload:' '80, 8080, 8880' 'VLESS/Trojan:' '443'
+  port_row 'SSH WS:' '2082, 2086' 'BadVPN:' '7300'
+  port_row 'Xray NTLS:' '80, 8080, 8880' 'Hysteria 2:' '443 UDP'
+  port_row 'Hysteria 1:' '20000-50000' 'ZiVPN:' '6000-19999'
+  port_row 'UDPCustom:' 'remaining UDP' 'SlowDNS:' '53, 5300'
+  port_row 'OpenVPN:' '1194 TCP/UDP' 'OVPN SSL:' '8433'
+  port_row 'OVPN WS:' '80, 8080, 8880' 'WireGuard:' '4000 UDP'
   printf '%b-------------------------- SYSTEM RESOURCES -------------------------%b\n' "$RED" "$NC"
   printf '  %bRAM Used:%b  %-15s  %bCPU Used:%b  %-13s  %bBuffer:%b  %s\n' "$WHITE" "$NC" "$ram" "$WHITE" "$NC" "$cpu" "$WHITE" "$NC" "$buffer"
   line
@@ -73,7 +74,7 @@ not_installed() {
 
 status_menu() {
   clear
-  echo '═══ V6 SERVICE STATUS ═══'
+  menu_title 'FRIMPS SERVICE STATUS'
   echo
   for unit in ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws ssh-xray-websocket-v6-payloadgate ssh-xray-websocket-v6-tlsmux ssh-xray-websocket-v6-xray ssh-xray-websocket-v6-gfraw ssh-xray-websocket-v6-udp-routing frimps-openvpn-udp frimps-openvpn-tcp frimps-openvpn-gateway frimps-openvpn-stunnel frimps-openvpn-bshield hysteria1-server hysteria2-server wg-quick@wg0 frimps-slowdns zivpn frimps-badvpn frimps-udp-custom nginx haproxy; do
     printf '%-42s %s\n' "$unit" "$(systemctl is-active "$unit" 2>/dev/null || true)"
@@ -85,7 +86,7 @@ status_menu() {
 
 remaining_services_menu() {
   clear
-  echo '═══ REMAINING SERVICE FOUNDATION ═══'
+  menu_title 'REMAINING SERVICE FOUNDATION'
   echo
   echo 'This stages the ordered UDP policy, OpenVPN baseline configurations,'
   echo 'and a non-destructive WireGuard base configuration. It does not start'
@@ -204,8 +205,24 @@ zivpn_menu() {
 }
 slowdns_menu() { clear; bash "$script_dir/slowdns-install.sh"; read -r -p 'Enable SlowDNS now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-slowdns.service; pause; }
 udp_custom_menu() { clear; bash "$script_dir/udp-custom-install.sh"; read -r -p 'Enable UDP Custom now? [y/N] ' x; [[ "$x" =~ ^[Yy]$ ]] && systemctl enable --now frimps-badvpn.service frimps-udp-custom.service; pause; }
-utilities_menu() { while true; do clear; echo '═══ SYSTEM UTILITIES ═══'; echo '  [1] BBR status'; echo '  [2] Enable native kernel BBR'; echo '  [3] Netflix / streaming region check'; echo '  [0] Back'; read -r -p '  ► Option: ' x; case "$x" in 1) bash "$script_dir/utilities-v6.sh" status; pause;; 2) bash "$script_dir/utilities-v6.sh" enable-bbr; pause;; 3) bash "$script_dir/utilities-v6.sh" netflix; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac; done; }
-maintenance_menu() { while true; do clear; echo '═══ FRIMPS MAINTENANCE ═══'; echo '  [1] Monitor active connections'; echo '  [2] Restart SSH services'; echo '  [3] Restart Xray services'; echo '  [4] Restart UDP services'; echo '  [5] Restart OpenVPN services'; echo '  [6] Restart WireGuard'; echo '  [7] Restart all Frimps services'; echo '  [8] Create managed-state backup'; echo '  [9] Remove expired managed accounts'; echo '  [10] Reboot server'; echo '  [0] Back'; read -r -p '  ► Option: ' x; case "$x" in 1) bash "$script_dir/maintenance-v6.sh" monitor; pause;; 2) bash "$script_dir/maintenance-v6.sh" restart ssh; pause;; 3) bash "$script_dir/maintenance-v6.sh" restart xray; pause;; 4) bash "$script_dir/maintenance-v6.sh" restart udp; pause;; 5) bash "$script_dir/maintenance-v6.sh" restart openvpn; pause;; 6) bash "$script_dir/maintenance-v6.sh" restart wireguard; pause;; 7) read -r -p 'Restart all managed services? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && bash "$script_dir/maintenance-v6.sh" restart all; pause;; 8) bash "$script_dir/maintenance-v6.sh" backup; pause;; 9) read -r -p 'Remove expired managed accounts? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && bash "$script_dir/maintenance-v6.sh" cleanup; pause;; 10) read -r -p 'Reboot server now? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && reboot; return;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac; done; }
+utilities_menu() {
+  while true; do
+    clear; menu_title 'SYSTEM UTILITIES'
+    item 1 'BBR status'; item 2 'Enable native kernel BBR'; item 3 'Netflix / streaming region check'; back_item
+    read -r -p '  ► Option: ' x
+    case "$x" in 1) bash "$script_dir/utilities-v6.sh" status; pause;; 2) bash "$script_dir/utilities-v6.sh" enable-bbr; pause;; 3) bash "$script_dir/utilities-v6.sh" netflix; pause;; 0) return;; *) printf '%bInvalid option.%b\n' "$RED" "$NC"; sleep 1;; esac
+  done
+}
+maintenance_menu() {
+  while true; do
+    clear; menu_title 'SERVICE CONTROLS'
+    item 1 'Restart SSH services'; item 2 'Restart Xray services'; item 3 'Restart UDP services'; item 4 'Restart OpenVPN services'; item 5 'Restart WireGuard'; item 6 'Restart all Frimps services'; item 7 'Create managed-state backup'; item 8 'Remove expired managed accounts'; back_item
+    read -r -p '  ► Option: ' x
+    case "$x" in
+      1) bash "$script_dir/maintenance-v6.sh" restart ssh; pause;; 2) bash "$script_dir/maintenance-v6.sh" restart xray; pause;; 3) bash "$script_dir/maintenance-v6.sh" restart udp; pause;; 4) bash "$script_dir/maintenance-v6.sh" restart openvpn; pause;; 5) bash "$script_dir/maintenance-v6.sh" restart wireguard; pause;; 6) read -r -p 'Restart all managed services? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && bash "$script_dir/maintenance-v6.sh" restart all; pause;; 7) bash "$script_dir/maintenance-v6.sh" backup; pause;; 8) read -r -p 'Remove expired managed accounts? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && bash "$script_dir/maintenance-v6.sh" cleanup; pause;; 0) return;; *) printf '%bInvalid option.%b\n' "$RED" "$NC"; sleep 1;;
+    esac
+  done
+}
 
 xray_menu() {
   while true; do
