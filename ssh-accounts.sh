@@ -45,7 +45,7 @@ case "$action" in
     valid_days "$days" || die "days must be a positive integer"
     managed "$user" && die "account already managed by v6"
     id "$user" >/dev/null 2>&1 && die "a Linux user with this name already exists"
-    read -r -s -p "Password for $user: " password; echo
+    read -r -p "Password for $user: " password
     [[ -n "$password" ]] || die "empty passwords are not allowed"
     expiry="$(date -u -d "+$days days" +%F)"
     hash="$(printf '%s' "$password" | openssl passwd -6 -stdin)"
@@ -74,4 +74,4 @@ case "$action" in
     commit "$(jq --arg name "$user" '[.[] | select(.name != $name)]' "$store")"
     ;;
 esac
-echo "SSH account $action completed: $user"
+[[ "$action" == create ]] || echo "SSH account $action completed: $user"

@@ -122,7 +122,7 @@ hysteria1_menu() {
     select choice in 'Configure installed sing-box backend' 'Create account' 'Renew account' 'Delete account' 'List accounts' 'Show link' 'Back'; do
       case "$choice" in
         'Configure installed sing-box backend') load_service_options; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria1-install.sh"; pause ;;
-        'Create account') ask_account; load_service_options; read -r -s -p 'Account password (Enter for generated password): ' password; echo; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria1-accounts.sh" create "$account" "$validity" "${password:-$(openssl rand -hex 12)}"; unset password; pause ;;
+        'Create account') ask_account; load_service_options; read -r -p 'Account password (Enter for generated password): ' password; V6_DOMAIN="$(primary_domain)" "$script_dir/hysteria1-accounts.sh" create "$account" "$validity" "${password:-$(openssl rand -hex 12)}"; unset password; pause ;;
         'Renew account') ask_account; "$script_dir/hysteria1-accounts.sh" renew "$account" "$validity"; pause ;;
         'Delete account') read -r -p 'Username: ' account; "$script_dir/hysteria1-accounts.sh" delete "$account"; pause ;;
         'List accounts') "$script_dir/hysteria1-accounts.sh" list; pause ;;

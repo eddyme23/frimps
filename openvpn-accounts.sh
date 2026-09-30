@@ -15,7 +15,7 @@ case "$action" in
   create)
     days="${3:-}"; valid "$name" || die 'invalid username'; [[ "$days" =~ ^[1-9][0-9]{0,3}$ ]] || die 'invalid days'
     jq -e --arg n "$name" '.[] | select(.name == $n)' "$store" >/dev/null && die 'account exists'
-    read -rsp 'Password: ' password; echo
+    read -rp 'Password: ' password
     expiry="$(date -u -d "+$days days" +%F)"; hash="$(openssl passwd -6 "$password")"
     commit "$(jq --arg n "$name" --arg h "$hash" --arg e "$expiry" '. + [{name:$n,passwordHash:$h,expiresAt:$e}]' "$store")"
     cat > "$clients/$name-udp.ovpn" <<EOF
