@@ -12,6 +12,15 @@ die() { echo "v6 UDP routing: $*" >&2; exit 1; }
 [[ "${EUID}" -eq 0 ]] || die 'run as root'
 command -v iptables >/dev/null 2>&1 || command -v nft >/dev/null 2>&1 || die 'install iptables or nftables'
 
+sync_routes_metadata() {
+  local routes="$state_dir/routes.json" tmp
+  [[ -s "$routes" ]] && command -v jq >/dev/null 2>&1 || return 0
+  tmp="$(mktemp "$state_dir/.routes.json.XXXXXX")"
+  jq '.udpCustomRanges = ["1-52", "54-442", "444-1193", "1195-3999", "4001-5299", "5301-5999", "50001-65535"]' "$routes" > "$tmp"
+  chmod 600 "$tmp"
+  mv "$tmp" "$routes"
+}
+
 if [[ -z "$public_if" ]]; then
   public_if="$(ip -4 route show default | awk '/default/ {print $5; exit}')"
 fi
@@ -41,6 +50,7 @@ EOF
   install -d -m 700 "$state_dir"
   printf 'interface=%s\nbackend=nftables\n' "$public_if" > "$state_dir/udp-routing.env"
   chmod 600 "$state_dir/udp-routing.env"
+  sync_routes_metadata
   echo "Applied managed nftables UDP routing on $public_if."
 }
 add() { iptables -t nat -C "$@" 2>/dev/null || iptables -t nat -A "$@"; }
@@ -72,6 +82,7 @@ apply() {
   install -d -m 700 "$state_dir"
   printf 'interface=%s\nchain=%s\n' "$public_if" "$chain" > "$state_dir/udp-routing.env"
   chmod 600 "$state_dir/udp-routing.env"
+  sync_routes_metadata
   echo "Applied managed UDP routing on $public_if."
 }
 
