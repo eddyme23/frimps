@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# This is an interactive UI: a rejected username, missing account, or cancelled
+# action must return to the current menu rather than terminate the whole UI.
+set -uo pipefail
 
 # The stable command is a symlink in /usr/local/bin, so resolve it before
 # locating the companion account-management scripts.
