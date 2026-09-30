@@ -56,9 +56,11 @@ if [[ -e "$routing_haproxy" || -e "$routing_nginx" ]]; then
   check grep -q 'bind :443' "$routing_haproxy"
   check grep -q 'location = /trojan' "$routing_nginx"
   check grep -q 'location = /trntls { return 410; }' "$routing_nginx"
-  check grep -q 'bind :80' "$routing_haproxy"
-  check grep -q 'bind :8080' "$routing_haproxy"
-  check grep -q 'bind :8880' "$routing_haproxy"
+  # Plain HTTP/SSH/OpenVPN WebSocket traffic is dispatched by Xray on these
+  # ports.  HAProxy is deliberately limited to 443, 2082 and 2086.
+  check jq -e '[.inbounds[] | select(.listen == "0.0.0.0") | .port] | index(80) != null' "$backends"
+  check jq -e '[.inbounds[] | select(.listen == "0.0.0.0") | .port] | index(8080) != null' "$backends"
+  check jq -e '[.inbounds[] | select(.listen == "0.0.0.0") | .port] | index(8880) != null' "$backends"
   check grep -q 'bind :2082' "$routing_haproxy"
   check grep -q 'bind :2086' "$routing_haproxy"
   check grep -q 'default_backend ssh_payload_gateway' "$routing_haproxy"
