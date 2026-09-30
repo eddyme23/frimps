@@ -264,16 +264,16 @@ while true; do
   item 1 'SSH Account Management (SSH / SlowDNS / UDP Custom)'
   item 2 'Xray Account Management (VLESS / Trojan / REALITY)'
   item 3 'Hysteria 1 Account Management (UDP)'
-  item 4 'ZiVPN Account Management (UDP)'
-  item 5 'Monitor Active Connections'
-  item 6 'Service Controls (restart protocols)'
-  item 7 'Create Frimps Backup'
-  item 8 'System Utilities (BBR / Netflix)'
-  item 9 'Advanced Settings (domain / obfuscation)'
-  item 10 'Reboot Server'
-  item 11 'Hysteria 2 Account Management (UDP)'
-  item 12 'OpenVPN Account Management (OpenVPN3)'
-  item 13 'WireGuard Account Management (UDP)'
+  item 4 'Hysteria 2 Account Management (UDP)'
+  item 5 'WireGuard Account Management (UDP)'
+  item 6 'OpenVPN Account Management (OpenVPN3)'
+  item 7 'ZiVPN Account Management (UDP)'
+  item 8 'Monitor Active Connections'
+  item 9 'Service Controls (restart protocols)'
+  item 10 'Create Frimps Backup'
+  item 11 'System Utilities (BBR / Netflix)'
+  item 12 'Advanced Settings (domain / obfuscation)'
+  item 13 'Reboot Server'
   printf '  [%b00%b] %bExit%b\n' "$RED" "$NC" "$BOLD" "$NC"
   echo
   read -r -p '  ► Select an option: ' choice
@@ -281,16 +281,16 @@ while true; do
     1|01) ssh_menu ;;
     2|02) xray_menu ;;
     3|03) hysteria1_menu ;;
-    4|04) zivpn_menu ;;
-    5|05) bash "$script_dir/maintenance-v6.sh" monitor; pause ;;
-    6|06) maintenance_menu ;;
-    7|07) bash "$script_dir/maintenance-v6.sh" backup; pause ;;
-    8|08) utilities_menu ;;
-    9|09) settings_menu ;;
-    10) read -r -p 'Reboot server now? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && reboot ;;
-    11) hysteria2_menu ;;
-    12) openvpn_menu ;;
-    13) wireguard_menu ;;
+    4|04) hysteria2_menu ;;
+    5|05) wireguard_menu ;;
+    6|06) openvpn_menu ;;
+    7|07) zivpn_menu ;;
+    8|08) bash "$script_dir/maintenance-v6.sh" monitor; pause ;;
+    9|09) maintenance_menu ;;
+    10) bash "$script_dir/maintenance-v6.sh" backup; pause ;;
+    11) utilities_menu ;;
+    12) settings_menu ;;
+    13) read -r -p 'Reboot server now? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && reboot ;;
     0|00) exit 0 ;;
     *) echo 'Invalid option.'; sleep 1 ;;
   esac
