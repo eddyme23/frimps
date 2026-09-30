@@ -216,10 +216,21 @@ utilities_menu() {
 maintenance_menu() {
   while true; do
     clear; menu_title 'SERVICE CONTROLS'
-    item 1 'Restart SSH services'; item 2 'Restart Xray services'; item 3 'Restart UDP services'; item 4 'Restart OpenVPN services'; item 5 'Restart WireGuard'; item 6 'Restart all Frimps services'; item 7 'Create managed-state backup'; item 8 'Remove expired managed accounts'; back_item
+    item 1 'Restart SSH services'; item 2 'Restart Xray services'; item 3 'Restart UDP services'; item 4 'Restart OpenVPN services'; item 5 'Restart WireGuard'; item 6 'Restart all Frimps services'; item 7 'Create managed-state backup'; item 8 'Remove expired managed accounts'; item 9 'View protocol logs'; back_item
     read -r -p '  ► Option: ' x
     case "$x" in
-      1) bash "$script_dir/maintenance-v6.sh" restart ssh; pause;; 2) bash "$script_dir/maintenance-v6.sh" restart xray; pause;; 3) bash "$script_dir/maintenance-v6.sh" restart udp; pause;; 4) bash "$script_dir/maintenance-v6.sh" restart openvpn; pause;; 5) bash "$script_dir/maintenance-v6.sh" restart wireguard; pause;; 6) read -r -p 'Restart all managed services? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && bash "$script_dir/maintenance-v6.sh" restart all; pause;; 7) bash "$script_dir/maintenance-v6.sh" backup; pause;; 8) read -r -p 'Remove expired managed accounts? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && bash "$script_dir/maintenance-v6.sh" cleanup; pause;; 0) return;; *) printf '%bInvalid option.%b\n' "$RED" "$NC"; sleep 1;;
+      1) bash "$script_dir/maintenance-v6.sh" restart ssh; pause;; 2) bash "$script_dir/maintenance-v6.sh" restart xray; pause;; 3) bash "$script_dir/maintenance-v6.sh" restart udp; pause;; 4) bash "$script_dir/maintenance-v6.sh" restart openvpn; pause;; 5) bash "$script_dir/maintenance-v6.sh" restart wireguard; pause;; 6) read -r -p 'Restart all managed services? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && bash "$script_dir/maintenance-v6.sh" restart all; pause;; 7) bash "$script_dir/maintenance-v6.sh" backup; pause;; 8) read -r -p 'Remove expired managed accounts? [y/N] ' confirm; [[ "$confirm" =~ ^[Yy]$ ]] && bash "$script_dir/maintenance-v6.sh" cleanup; pause;; 9) protocol_logs_menu;; 0) return;; *) printf '%bInvalid option.%b\n' "$RED" "$NC"; sleep 1;;
+    esac
+  done
+}
+
+protocol_logs_menu() {
+  while true; do
+    clear; menu_title 'PROTOCOL LOGS (LAST 100 LINES)'
+    item 1 'SSH bridge'; item 2 'Xray'; item 3 'OpenVPN transports'; item 4 'Hysteria 1'; item 5 'Hysteria 2'; item 6 'WireGuard'; item 7 'ZiVPN'; item 8 'SlowDNS'; item 9 'UDP Custom / BadVPN'; back_item
+    read -r -p '  ► Option: ' x
+    case "$x" in
+      1) bash "$script_dir/maintenance-v6.sh" logs ssh; pause;; 2) bash "$script_dir/maintenance-v6.sh" logs xray; pause;; 3) bash "$script_dir/maintenance-v6.sh" logs openvpn; pause;; 4) bash "$script_dir/maintenance-v6.sh" logs hysteria1; pause;; 5) bash "$script_dir/maintenance-v6.sh" logs hysteria2; pause;; 6) bash "$script_dir/maintenance-v6.sh" logs wireguard; pause;; 7) bash "$script_dir/maintenance-v6.sh" logs zivpn; pause;; 8) bash "$script_dir/maintenance-v6.sh" logs slowdns; pause;; 9) bash "$script_dir/maintenance-v6.sh" logs udpcustom; pause;; 0) return;; *) printf '%bInvalid option.%b\n' "$RED" "$NC"; sleep 1;;
     esac
   done
 }

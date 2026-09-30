@@ -125,6 +125,8 @@ After=network-online.target
 [Service]
 ExecStart=/usr/sbin/openvpn --config /etc/openvpn/server/frimps-$type.conf
 Restart=on-failure
+RestartSec=2
+LimitNOFILE=1048576
 [Install]
 WantedBy=multi-user.target
 EOF
@@ -137,6 +139,8 @@ Requires=frimps-openvpn-tcp.service
 [Service]
 ExecStart=/usr/bin/node /usr/local/lib/ssh-xray-websocket-v6/openvpn-tcp-gateway.js
 Restart=on-failure
+RestartSec=2
+LimitNOFILE=1048576
 [Install]
 WantedBy=multi-user.target
 EOF
@@ -148,6 +152,8 @@ Requires=frimps-openvpn-tcp.service
 [Service]
 ExecStart=/usr/bin/node /usr/local/lib/ssh-xray-websocket-v6/openvpn-bshield.js
 Restart=on-failure
+RestartSec=2
+LimitNOFILE=1048576
 [Install]
 WantedBy=multi-user.target
 EOF
@@ -159,6 +165,8 @@ Requires=frimps-openvpn-gateway.service
 [Service]
 ExecStart=/usr/bin/stunnel4 /etc/openvpn/frimps-stunnel.conf
 Restart=on-failure
+RestartSec=2
+LimitNOFILE=1048576
 [Install]
 WantedBy=multi-user.target
 EOF

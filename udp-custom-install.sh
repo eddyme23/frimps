@@ -26,6 +26,7 @@ After=network-online.target
 ExecStart=/usr/local/bin/badvpn-udpgw --loglevel none --listen-addr 127.0.0.1:7300 --max-clients 1000 --max-connections-for-client 10
 Restart=always
 RestartSec=2
+LimitNOFILE=1048576
 StandardOutput=journal
 StandardError=journal
 [Install]
@@ -40,6 +41,7 @@ Requires=ssh-xray-websocket-v6-udp-routing.service
 ExecStart=/etc/frimps-udp-custom/udp-custom server -c /etc/frimps-udp-custom/config.json
 Restart=always
 RestartSec=2
+LimitNOFILE=1048576
 StandardOutput=journal
 StandardError=journal
 [Install]

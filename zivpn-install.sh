@@ -24,9 +24,12 @@ Requires=ssh-xray-websocket-v6-udp-routing.service
 [Service]
 ExecStart=/usr/local/bin/zivpn server -c /etc/zivpn/config.json
 Restart=on-failure
-RestartSec=3
+RestartSec=2
+LimitNOFILE=1048576
 StandardOutput=journal
 StandardError=journal
+NoNewPrivileges=true
+PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 EOF

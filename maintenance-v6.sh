@@ -54,10 +54,29 @@ cleanup() {
   cleanup_json "$state_dir/openvpn-users.json" name openvpn-accounts.sh
   echo 'Expired Frimps-managed accounts were cleaned where configured.'
 }
+logs() {
+  local unit item
+  local -a journal_units=()
+  case "${1:-}" in
+    ssh) unit='ssh-xray-websocket-v6-sshws.service' ;;
+    xray) unit='ssh-xray-websocket-v6-xray.service' ;;
+    openvpn) unit='frimps-openvpn-gateway.service frimps-openvpn-stunnel.service frimps-openvpn-bshield.service' ;;
+    hysteria1) unit='hysteria1-server.service' ;;
+    hysteria2) unit='hysteria2-server.service' ;;
+    wireguard) unit='wg-quick@wg0.service' ;;
+    zivpn) unit='zivpn.service' ;;
+    slowdns) unit='frimps-slowdns.service' ;;
+    udpcustom) unit='frimps-udp-custom.service frimps-badvpn.service' ;;
+    *) die 'usage: maintenance-v6.sh logs {ssh|xray|openvpn|hysteria1|hysteria2|wireguard|zivpn|slowdns|udpcustom}' ;;
+  esac
+  for item in $unit; do journal_units+=(-u "$item"); done
+  journalctl --no-pager -n 100 "${journal_units[@]}"
+}
 case "${1:-}" in
   monitor) monitor ;;
   restart) restart "${2:-}" ;;
   backup) backup ;;
   cleanup) cleanup ;;
-  *) die 'usage: maintenance-v6.sh {monitor|restart GROUP|backup|cleanup}' ;;
+  logs) logs "${2:-}" ;;
+  *) die 'usage: maintenance-v6.sh {monitor|restart GROUP|backup|cleanup|logs GROUP}' ;;
 esac

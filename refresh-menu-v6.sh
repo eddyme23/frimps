@@ -9,5 +9,6 @@ runtime_dir=/usr/local/lib/ssh-xray-websocket-v6
 install -d -m 755 "$runtime_dir"
 install -m 755 "$script_dir"/*.sh "$runtime_dir/"
 ln -sfn "$runtime_dir/menu-v6.sh" /usr/local/bin/ssh-xray-websocket-v6-menu
+bash "$runtime_dir/install-maintenance-timer.sh"
 bash "$runtime_dir/enable-frimps-services.sh"
 echo 'Frimps menu refreshed and installed services are boot-persistent.'

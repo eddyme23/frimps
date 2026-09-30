@@ -20,6 +20,8 @@ After=network-online.target
 [Service]
 ExecStart=/usr/local/bin/hysteria server --config /etc/hysteria2/config.yaml
 Restart=on-failure
+RestartSec=2
+LimitNOFILE=1048576
 StandardOutput=journal
 StandardError=journal
 NoNewPrivileges=true
