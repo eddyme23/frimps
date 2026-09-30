@@ -11,6 +11,7 @@ bbr_status() {
 }
 
 enable_bbr() {
+  modprobe tcp_bbr 2>/dev/null || true
   grep -qw bbr /proc/sys/net/ipv4/tcp_available_congestion_control || { echo 'This kernel does not provide BBR.' >&2; exit 1; }
   install -d -m 755 /etc/sysctl.d
   cat >/etc/sysctl.d/99-frimps-bbr.conf <<'EOF'
