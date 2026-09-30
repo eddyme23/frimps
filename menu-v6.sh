@@ -30,24 +30,35 @@ pick_account_store() { local store="$1" field="${2:-name}" label="${3:-Account}"
 pick_xray_account() { pick_account_store "$state_dir/users/$1.json" name "${1^^}"; }
 
 show_ports() {
-  local domain ram cpu kernel
+  local domain os_name arch cores now ram cpu buffer idle idle2 total total2 work
   domain="$(primary_domain 2>/dev/null || hostname -f 2>/dev/null || hostname)"
-  ram="$(free -h 2>/dev/null | awk '/^Mem:/ {print $3 "/" $2}' || echo n/a)"
-  cpu="$(awk -F': ' '/model name/ {print $2; exit}' /proc/cpuinfo 2>/dev/null || uname -m)"
-  kernel="$(uname -r)"
+  os_name="$(. /etc/os-release 2>/dev/null; printf '%s %s' "${ID:-Linux}" "${VERSION_ID:-}")"
+  os_name="${os_name^^}"; arch="$(uname -m)"; cores="$(nproc 2>/dev/null || echo '?')"; now="$(date -u '+%H:%M GMT')"
+  ram="$(free 2>/dev/null | awk '/^Mem:/ {printf "%.1f%%", ($3/$2)*100}' || echo n/a)"
+  buffer="$(free -m 2>/dev/null | awk '/^Mem:/ {print ($6+$7) "M"}' || echo n/a)"
+  # A short second sample avoids top-format and locale dependencies.
+  read -r total idle < <(awk '/^cpu / {t=0; for(i=2;i<=NF;i++) t+=$i; print t,$5; exit}' /proc/stat)
+  sleep 0.16
+  read -r total2 idle2 < <(awk '/^cpu / {t=0; for(i=2;i<=NF;i++) t+=$i; print t,$5; exit}' /proc/stat)
+  work=$((total2-total)); ((work>0)) && cpu="$(awk -v i="$idle2" -v p="$idle" -v t="$work" 'BEGIN {printf "%.1f%%", 100-(i-p)*100/t}')" || cpu='n/a'
   line
-  printf '        %bFRIMPS MULTI-PROTOCOL VPN MANAGEMENT%b\n' "$BOLD" "$NC"
-  printf '        %bSSH / XRAY / OPENVPN / HYSTERIA / WIREGUARD%b\n' "$GREEN" "$NC"
+  printf '              %b>>>>  🐉  FRIMPS  ★  PLUS  🐉  <<<<%b\n' "$YELLOW" "$NC"
   line
-  printf '  %bDomain:%b %-27s %bKernel:%b %s\n' "$WHITE" "$NC" "$domain" "$WHITE" "$NC" "$kernel"
-  printf '  %bRAM:%b    %-27s %bCPU:%b %s\n' "$WHITE" "$NC" "$ram" "$WHITE" "$NC" "$cpu"
-  printf '%b--------------------------- PUBLIC PORTS ---------------------------%b\n' "$CYAN" "$NC"
-  printf '  %-15s %-19s %-15s %s\n' 'SSH:' '22, 143 TCP' 'VLESS/Trojan:' '443 TCP'
-  printf '  %-15s %-19s %-15s %s\n' 'SSH Payload:' '80, 8080, 8880' 'Hysteria 2:' '443 UDP'
-  printf '  %-15s %-19s %-15s %s\n' 'SSH WS TLS:' '443 / 2082 / 2086' 'OpenVPN:' '1194 TCP/UDP, 8433'
-  printf '  %-15s %-19s %-15s %s\n' 'SlowDNS:' '53, 5300 UDP' 'WireGuard:' '4000 UDP'
-  printf '  %-15s %-19s %-15s %s\n' 'ZiVPN:' '6000-19999 UDP' 'Hysteria 1:' '20000-50000 UDP'
-  printf '  %-15s %-19s\n' 'UDP Custom:' 'remaining UDP ports'
+  printf '  %bOS:%b   %-18s  %bArch:%b  %-14s  %bCores:%b  %s\n' "$WHITE" "$NC" "$os_name" "$WHITE" "$NC" "$arch" "$WHITE" "$NC" "$cores"
+  printf '  %bDomain:%b %-18s  %bTime:%b  %-14s  %bStatus:%b %bONLINE%b\n' "$WHITE" "$NC" "$domain" "$WHITE" "$NC" "$now" "$WHITE" "$NC" "$GREEN" "$NC"
+  printf '%b--------------------------- PROTOCOL PORTS --------------------------%b\n' "$RED" "$NC"
+  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'SSH:' '22, 143' "$WHITE" "$NC" 'System-DNS:' '53'
+  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'Dropbear:' '143' "$WHITE" "$NC" 'WEB-Nginx:' '80 / 443'
+  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'SSL:' '443' "$WHITE" "$NC" 'SSH WS TLS:' '443'
+  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'SSH Payload:' '80, 8080, 8880' "$WHITE" "$NC" 'VLESS/Trojan:' '443'
+  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'SSH WS:' '2082, 2086' "$WHITE" "$NC" 'BadVPN:' '7300'
+  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'Xray NTLS:' '80, 8080, 8880' "$WHITE" "$NC" 'Hysteria 2:' '443 UDP'
+  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'Hysteria 1:' '20000-50000' "$WHITE" "$NC" 'ZiVPN:' '6000-19999'
+  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'UDPCustom:' 'remaining UDP' "$WHITE" "$NC" 'SlowDNS:' '53, 5300'
+  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'OpenVPN:' '1194 TCP/UDP' "$WHITE" "$NC" 'OVPN SSL:' '8433'
+  printf '  %b•%-1s %-12s %-22s %b•%-1s %-14s %s%b\n' "$WHITE" "$NC" 'OVPN WS:' '80, 8080, 8880' "$WHITE" "$NC" 'WireGuard:' '4000 UDP'
+  printf '%b-------------------------- SYSTEM RESOURCES -------------------------%b\n' "$RED" "$NC"
+  printf '  %bRAM Used:%b  %-15s  %bCPU Used:%b  %-13s  %bBuffer:%b  %s\n' "$WHITE" "$NC" "$ram" "$WHITE" "$NC" "$cpu" "$WHITE" "$NC" "$buffer"
   line
 }
 
