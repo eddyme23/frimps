@@ -19,8 +19,9 @@ net.core.default_qdisc=fq
 net.ipv4.tcp_congestion_control=bbr
 EOF
   sysctl --system >/dev/null
-  bbr_status
   [[ "$(sysctl -n net.ipv4.tcp_congestion_control)" == bbr ]] || { echo 'BBR was not activated.' >&2; exit 1; }
+  echo 'BBR is enabled and will persist after reboot: /etc/sysctl.d/99-frimps-bbr.conf'
+  bbr_status
 }
 
 netflix_check() {
