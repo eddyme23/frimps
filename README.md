@@ -1,5 +1,5 @@
 
-## Frimps fresh-server installation
+## Frimps Multi Script installation
 
 Recommended OS : **Debian 12** VPS, logged in as `root`.
 
