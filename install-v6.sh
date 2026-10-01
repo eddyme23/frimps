@@ -28,7 +28,9 @@ cat > "$state_dir/routes.json" <<EOF
 {
   "schema": 1,
   "primaryDomain": "$domain",
-  "removedProtocols": ["vmess", "trojan"],
+  "removedProtocols": ["vmess"],
+  "trojan": {"enabled": true, "transport": "ws", "security": "tls", "path": "/trojan"},
+  "legacyTrojanPaths": [],
   "vless": {
     "tls": ["ws", "tcp-http", "xhttp", "httpupgrade", "grpc"],
     "encryptedNtls": ["tcp-http", "ws", "httpupgrade"],
@@ -41,7 +43,6 @@ cat > "$state_dir/routes.json" <<EOF
 }
 EOF
 chmod 600 "$state_dir/routes.json"
-rm -f "$state_dir/users/trojan.json"
 
 # Keep the selected TLS material and Vision hostname with the staged state.
 # Account changes re-render the Xray file later, so they must not silently

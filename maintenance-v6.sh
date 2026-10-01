@@ -46,6 +46,7 @@ cleanup_json() {
 cleanup() {
   bash "$script_dir/ssh-accounts.sh" cleanup || true
   bash "$script_dir/accounts.sh" vless cleanup || true
+  bash "$script_dir/accounts.sh" trojan cleanup || true
   bash "$script_dir/wireguard-accounts.sh" cleanup || true
   cleanup_json "$state_dir/hysteria1-users.json" name hysteria1-accounts.sh
   cleanup_json "$state_dir/hysteria2-users.json" name hysteria2-accounts.sh

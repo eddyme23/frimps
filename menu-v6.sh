@@ -51,7 +51,7 @@ show_ports() {
   port_row 'SSH:' '22, 143' 'System-DNS:' '53'
   port_row 'Dropbear:' '80' 'WEB-Nginx:' '80 / 443'
   port_row 'SSL:' '443' 'SSH WS TLS:' '443'
-  port_row 'SSH Payload:' '80, 8080, 8880' 'VLESS TLS:' '443'
+  port_row 'SSH Payload:' '80, 8080, 8880' 'VLESS/Trojan:' '443'
   port_row 'SSH WS:' '2082, 2086' 'BadVPN:' '7300'
   port_row 'Xray NTLS:' '80, 8080, 8880' 'Hysteria 2:' '443 UDP'
   port_row 'Hysteria 1:' '20000-50000' 'ZiVPN:' '6000-19999'
@@ -237,9 +237,9 @@ protocol_logs_menu() {
 
 xray_menu() {
   while true; do
-    clear; menu_title 'XRAY ACCOUNT MANAGEMENT'; item 1 'VLESS accounts'; item 2 'REALITY server information'; back_item
+    clear; menu_title 'XRAY ACCOUNT MANAGEMENT'; item 1 'VLESS accounts'; item 2 'Trojan accounts'; item 3 'REALITY server information'; back_item
     read -r -p '  ► Option: ' x
-    case "$x" in 1) vless_menu;; 2) [[ -s "$state_dir/reality-client-info.json" ]] && cat "$state_dir/reality-client-info.json" || echo 'REALITY keys have not been generated.'; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac
+    case "$x" in 1) vless_menu;; 2) trojan_menu;; 3) [[ -s "$state_dir/reality-client-info.json" ]] && cat "$state_dir/reality-client-info.json" || echo 'REALITY keys have not been generated.'; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac
   done
 }
 
@@ -248,6 +248,14 @@ vless_menu() {
     clear; menu_title 'VLESS ACCOUNT MANAGEMENT'; item 1 'Create account'; item 2 'Renew account'; item 3 'Delete account'; item 4 'List accounts'; item 5 'Show config links'; back_item
     read -r -p '  ► Option: ' x
     case "$x" in 1) ask_account; bash "$script_dir/accounts.sh" vless create "$account" "$validity"; pause;; 2) pick_xray_account vless && { read -r -p 'Validity (days): ' validity; bash "$script_dir/accounts.sh" vless renew "$account" "$validity"; }; pause;; 3) pick_xray_account vless && bash "$script_dir/accounts.sh" vless delete "$account"; pause;; 4) bash "$script_dir/accounts.sh" vless list; pause;; 5) pick_xray_account vless && bash "$script_dir/accounts.sh" vless links "$account"; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac
+  done
+}
+
+trojan_menu() {
+  while true; do
+    clear; menu_title 'TROJAN ACCOUNT MANAGEMENT'; item 1 'Create account'; item 2 'Renew account'; item 3 'Delete account'; item 4 'List accounts'; item 5 'Show config link'; back_item
+    read -r -p '  ► Option: ' x
+    case "$x" in 1) ask_account; bash "$script_dir/accounts.sh" trojan create "$account" "$validity"; pause;; 2) pick_xray_account trojan && { read -r -p 'Validity (days): ' validity; bash "$script_dir/accounts.sh" trojan renew "$account" "$validity"; }; pause;; 3) pick_xray_account trojan && bash "$script_dir/accounts.sh" trojan delete "$account"; pause;; 4) bash "$script_dir/accounts.sh" trojan list; pause;; 5) pick_xray_account trojan && bash "$script_dir/accounts.sh" trojan links "$account"; pause;; 0) return;; *) echo 'Invalid option.'; sleep 1;; esac
   done
 }
 
@@ -265,7 +273,7 @@ while true; do
   show_ports
   echo
   item 1 'SSH Account Management (SSH / SlowDNS / UDP Custom)'
-  item 2 'Xray Account Management (VLESS / REALITY)'
+  item 2 'Xray Account Management (VLESS / Trojan / REALITY)'
   item 3 'Hysteria 1 Account Management (UDP)'
   item 4 'Hysteria 2 Account Management (UDP)'
   item 5 'WireGuard Account Management (UDP)'

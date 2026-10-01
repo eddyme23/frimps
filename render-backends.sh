@@ -23,12 +23,13 @@ fi
 [[ "${VLESS_NTLS_DECRYPTION:-}" == mlkem768x25519plus.* ]] || die "invalid VLESS NTLS decryption value"
 
 install -d -m 700 "$users_dir"
-for store in vless; do
+for store in vless trojan; do
   [[ -s "$users_dir/$store.json" ]] || printf '[]\n' > "$users_dir/$store.json"
   jq -e 'type == "array"' "$users_dir/$store.json" >/dev/null || die "$store user store is not a JSON array"
 done
 
 vless_clients="$(jq 'map({id:.uuid,email:.name,level:0})' "$users_dir/vless.json")"
+trojan_clients="$(jq 'map({password:.password,email:.name,level:0})' "$users_dir/trojan.json")"
 vision_clients="$(jq 'map({id:.uuid,email:.name,level:0,flow:"xtls-rprx-vision"})' "$users_dir/vless.json")"
 primary_domain="$(jq -r '.primaryDomain' "$routes")"
 vision_domain="${V6_VISION_DOMAIN:-${V6_STORED_VISION_DOMAIN:-vision.$primary_domain}}"
@@ -48,6 +49,7 @@ fi
 jq -n \
   --arg decryption "$VLESS_NTLS_DECRYPTION" \
   --argjson vless "$vless_clients" \
+  --argjson trojan "$trojan_clients" \
   '{
     log: {loglevel: "warning"},
     inbounds: [
@@ -56,6 +58,7 @@ jq -n \
       {tag:"plain-fallback-dispatcher-8880",listen:"0.0.0.0",port:8880,protocol:"vless",settings:{clients:[],decryption:"none",fallbacks:[{path:"/vlntls",dest:"127.0.0.1:3107"},{path:"/vlhu",dest:"127.0.0.1:3114"},{path:"/vless-tcp",dest:"127.0.0.1:3117"},{path:"/openvpn",dest:"127.0.0.1:10081"},{dest:"127.0.0.1:3102"}]}},
       {tag:"vless-ws-tls", listen:"127.0.0.1", port:3106, protocol:"vless", settings:{clients:$vless,decryption:"none"}, streamSettings:{network:"ws",security:"none",wsSettings:{path:"/vltls"}}},
       {tag:"vless-ws-encrypted-ntls", listen:"127.0.0.1", port:3107, protocol:"vless", settings:{clients:$vless,decryption:$decryption}, streamSettings:{network:"ws",security:"none",wsSettings:{path:"/vlntls"}}},
+      {tag:"trojan-ws-tls", listen:"127.0.0.1", port:3108, protocol:"trojan", settings:{clients:$trojan}, streamSettings:{network:"ws",security:"none",wsSettings:{path:"/trojan"}}},
       {tag:"vless-xhttp-tls", listen:"127.0.0.1", port:3112, protocol:"vless", settings:{clients:$vless,decryption:"none"}, streamSettings:{network:"xhttp",security:"none",xhttpSettings:{path:"/vlxhttp",mode:"auto"}}},
       {tag:"vless-httpupgrade-tls", listen:"127.0.0.1", port:3113, protocol:"vless", settings:{clients:$vless,decryption:"none"}, streamSettings:{network:"httpupgrade",security:"none",httpupgradeSettings:{path:"/vlhu"}}},
       {tag:"vless-httpupgrade-encrypted-ntls", listen:"127.0.0.1", port:3114, protocol:"vless", settings:{clients:$vless,decryption:$decryption}, streamSettings:{network:"httpupgrade",security:"none",httpupgradeSettings:{path:"/vlhu"}}},
@@ -74,11 +77,13 @@ jq -n '{
     {transport:"tls-http", path:"/", backend:"ssh-websocket"},
     {transport:"tls-http", path:"/vltls", backend:"vless-ws-tls:3106"},
     {transport:"plain-http", path:"/vlntls", backend:"vless-ws-encrypted-ntls:3107"},
+    {transport:"tls-http", path:"/trojan", backend:"trojan-ws-tls:3108"},
     {transport:"tls-http2", path:"/vlxhttp", backend:"vless-xhttp-tls:3112"},
     {transport:"tls-http", path:"/vlhu", backend:"vless-httpupgrade-tls:3113"},
     {transport:"plain-http", path:"/vlhu", backend:"vless-httpupgrade-encrypted-ntls:3114"},
     {transport:"tls-http2", service:"vlgrpc", backend:"vless-grpc-tls:3115"}
   ],
+  forbiddenPaths: ["/trtls", "/trntls"],
   unimplemented: ["ssh-ssl-classifier", "reality-vision", "tls-vision"]
 }' > "$backend_map"
 chmod 600 "$backend_map"

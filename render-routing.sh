@@ -91,6 +91,14 @@ server {
         proxy_set_header Host \$host;
     }
 
+    location = /trojan {
+        proxy_pass http://127.0.0.1:3108;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+    }
+
     location ^~ /vlxhttp/ {
         grpc_pass grpc://127.0.0.1:3112;
         grpc_set_header Host \$host;
@@ -115,9 +123,11 @@ server {
         proxy_set_header Host \$host;
     }
 
+    location = /trtls { return 410; }
+    location = /trntls { return 410; }
 }
 
-# HTTP/1.1 is deliberately separate: WebSocket requires it, while
+# HTTP/1.1 is deliberately separate: WebSocket and Trojan require it, while
 # XHTTP/gRPC are routed through the HTTP/2 listener above.
 server {
     listen 127.0.0.1:9081;
@@ -125,8 +135,11 @@ server {
 
     location = / { proxy_pass http://127.0.0.1:3102; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
     location = /vltls { proxy_pass http://127.0.0.1:3106; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
+    location = /trojan { proxy_pass http://127.0.0.1:3108; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
     location = /vlhu { proxy_pass http://127.0.0.1:3113; proxy_http_version 1.1; proxy_set_header Upgrade \$http_upgrade; proxy_set_header Connection "upgrade"; proxy_set_header Host \$host; }
     location = /vless-tcp { proxy_pass http://127.0.0.1:3116; proxy_http_version 1.1; proxy_set_header Host \$host; }
+    location = /trtls { return 410; }
+    location = /trntls { return 410; }
 }
 EOF
 
@@ -167,6 +180,9 @@ server {
         proxy_set_header Host $host;
     }
 
+    location = /trojan { return 410; }
+    location = /trtls { return 410; }
+    location = /trntls { return 410; }
 }
 EOF
 
