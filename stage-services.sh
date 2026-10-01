@@ -27,6 +27,7 @@ install -m 644 "$script_dir/payloadgate/main.go" "$runtime_dir/payloadgate/main.
 install -m 644 "$script_dir/sshws/main.go" "$runtime_dir/sshws/main.go"
 install -m 644 "$script_dir/gfraw/proxy.js" "$runtime_dir/gfraw/proxy.js"
 ln -sfn "$runtime_dir/menu-v6.sh" /usr/local/bin/ssh-xray-websocket-v6-menu
+ln -sfn "$runtime_dir/menu-v6.sh" /usr/local/bin/menu
 # Fresh Debian installations can have dropbear-bin installed without an
 # enabled packaged Dropbear unit, which means no host key has been generated
 # yet. The loopback SSH bridge still needs a stable key after every reboot.
