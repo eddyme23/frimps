@@ -65,7 +65,7 @@ email="$(ask "Let's Encrypt email" '')"
 read -r -p 'Cloudflare API token (shown while typing): ' cf_token
 valid_token "$cf_token" || die 'Cloudflare API token is invalid'
 
-slowdns_ns="$(ask 'SlowDNS nameserver' "ns.$domain")"
+slowdns_ns="$(ask 'SlowDNS nameserver' "ns-$domain")"
 valid_host "$slowdns_ns" || die 'SlowDNS nameserver is invalid'
 shared_obfs="$(ask 'Shared Hysteria 1 / ZiVPN obfuscation' 'frimps-9d4a7f21')"
 [[ "$shared_obfs" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || die 'obfuscation is invalid'

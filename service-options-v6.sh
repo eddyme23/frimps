@@ -38,7 +38,7 @@ domain="${domain:-$current_domain}"
 valid_hostname "$domain" || die 'invalid domain'
 [[ "$domain" == "$current_domain" ]] || die 'domain migration requires a matching certificate and an explicit install-v6.sh run; no change was made'
 
-ns="$(ask 'SlowDNS nameserver (metadata until SlowDNS is installed)' "${V6_SLOWDNS_NS:-ns.$domain}")"
+ns="$(ask 'SlowDNS nameserver (metadata until SlowDNS is installed)' "${V6_SLOWDNS_NS:-ns-$domain}")"
 valid_hostname "$ns" || die 'invalid SlowDNS nameserver'
 shared_obfs="$(ask 'Shared Hysteria 1 / ZiVPN obfuscation' "${V6_HYSTERIA1_OBFS:-$V6_ZIVPN_OBFS}")"
 valid_token "$shared_obfs" || die 'shared obfuscation must use letters, digits, dot, underscore, or hyphen'
