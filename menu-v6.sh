@@ -189,7 +189,6 @@ zivpn_menu() {
     item 2 'Renew account'
     item 3 'Delete account'
     item 4 'List accounts'
-    item 5 'Service status'
     back_item
     read -r -p '  ► Option: ' x
     case "$x" in
@@ -197,7 +196,6 @@ zivpn_menu() {
       2) pick_account_store "$state_dir/zivpn-users.json" password ZiVPN && { read -r -p 'Validity (days): ' validity; V6_DOMAIN="$(primary_domain)" bash "$script_dir/zivpn-accounts.sh" renew "$account" "$validity"; }; pause ;;
       3) pick_account_store "$state_dir/zivpn-users.json" password ZiVPN && bash "$script_dir/zivpn-accounts.sh" delete "$account"; pause ;;
       4) bash "$script_dir/zivpn-accounts.sh" list; pause ;;
-      5) systemctl --no-pager --full status zivpn.service; pause ;;
       0) return ;;
       *) echo 'Invalid option.'; sleep 1 ;;
     esac
