@@ -202,7 +202,7 @@ bash "$script_dir/render-backends.sh"
 bash "$script_dir/render-routing.sh"
 bash "$script_dir/validate-v6.sh"
 bash "$script_dir/stage-services.sh"
-V6_CONFIRM_TEST_VPS=YES V6_ALLOW_ACTIVE_V6=YES bash "$script_dir/activate-test-vps.sh"
+V6_CONFIRM_TEST_VPS=YES V6_ALLOW_ACTIVE_V6=YES V6_FRESH_INSTALL=YES bash "$script_dir/activate-test-vps.sh"
 
 note 'Configuring OpenVPN, WireGuard, UDP services, and Hysteria'
 bash "$script_dir/install-remaining-services.sh"
@@ -214,6 +214,9 @@ bash "$script_dir/hysteria1-accounts.sh" speed 1000 1000
 # created during fresh installation.
 bash "$script_dir/hysteria1-accounts.sh" create "$zivpn_password" 365 "$zivpn_password"
 bash "$script_dir/hysteria2-install.sh"
+if ! jq -e 'length > 0' "$state_dir/hysteria2-users.json" >/dev/null; then
+  bash "$script_dir/hysteria2-accounts.sh" create default 365
+fi
 bash "$script_dir/slowdns-install.sh"
 bash "$script_dir/zivpn-install.sh"
 bash "$script_dir/udp-custom-install.sh"

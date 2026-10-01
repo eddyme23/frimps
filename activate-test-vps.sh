@@ -29,7 +29,9 @@ install -d -m 700 "$backup_dir"
 if [[ -e /etc/nginx/sites-enabled/default ]]; then
   # This fresh VPS is using the packaged welcome site. HAProxy must own the
   # public non-TLS ports so raw SSH payload bytes are never HTTP-parsed.
-  grep -q 'Welcome to nginx' /etc/nginx/sites-enabled/default || die 'refusing to disable a non-default Nginx site; move its public listener before activation'
+  if ! grep -q 'Welcome to nginx' /etc/nginx/sites-enabled/default && [[ "${V6_FRESH_INSTALL:-}" != YES ]]; then
+    die 'refusing to disable a non-default Nginx site; move its public listener before activation'
+  fi
   cp -a /etc/nginx/sites-enabled/default "$backup_dir/nginx-default-site"
   rm -f /etc/nginx/sites-enabled/default
 fi
