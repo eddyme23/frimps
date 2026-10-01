@@ -11,7 +11,7 @@ die() { echo "v6 staging: $*" >&2; exit 1; }
 for file in xray-backends.json haproxy-443.cfg nginx-main-tls.conf nginx-encrypted-ntls.conf nginx-ssh-only.conf tlsmux.service payloadgate.service; do
   [[ -s "$state_dir/$file" ]] || die "missing $file; run the render scripts first"
 done
-for bin in xray haproxy nginx go dropbear node; do command -v "$bin" >/dev/null 2>&1 || die "install $bin on the test VPS first"; done
+for bin in xray haproxy nginx go dropbear dropbearkey node; do command -v "$bin" >/dev/null 2>&1 || die "install $bin on the test VPS first"; done
 
 "$script_dir/build-tlsmux.sh"
 "$script_dir/build-payloadgate.sh"
@@ -27,6 +27,15 @@ install -m 644 "$script_dir/payloadgate/main.go" "$runtime_dir/payloadgate/main.
 install -m 644 "$script_dir/sshws/main.go" "$runtime_dir/sshws/main.go"
 install -m 644 "$script_dir/gfraw/proxy.js" "$runtime_dir/gfraw/proxy.js"
 ln -sfn "$runtime_dir/menu-v6.sh" /usr/local/bin/ssh-xray-websocket-v6-menu
+# Fresh Debian installations can have dropbear-bin installed without an
+# enabled packaged Dropbear unit, which means no host key has been generated
+# yet. The loopback SSH bridge still needs a stable key after every reboot.
+install -d -m 700 /etc/dropbear
+if ! find /etc/dropbear -maxdepth 1 -type f -name 'dropbear_*_host_key' -size +0c | grep -q .; then
+  dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key >/dev/null
+  dropbearkey -t ed25519 -f /etc/dropbear/dropbear_ed25519_host_key >/dev/null
+fi
+chmod 600 /etc/dropbear/dropbear_*_host_key
 # The rendered files already reside in install_dir when the default state
 # directory is used. Copying them onto themselves makes GNU install fail.
 if [[ "$state_dir" != "$install_dir" ]]; then
