@@ -26,8 +26,7 @@ check() {
 
 check test -s "$routes"
 check test -s "$keys"
-check jq -e '.removedProtocols | index("vmess") != null' "$routes"
-check jq -e '.trojan.path == "/trojan" and (.legacyTrojanPaths | length == 0)' "$routes"
+check jq -e '.removedProtocols | index("vmess") != null and index("trojan") != null' "$routes"
 check jq -e '.vless.encryptedNtls | index("ws") != null' "$routes"
 check jq -e '.udpPriority == ["slowdns", "hysteria2", "openvpn", "wireguard", "zivpn", "hysteria1", "udp-custom"]' "$routes"
 check jq -e '.udpCustomRanges == ["1-52", "54-442", "444-1193", "1195-3999", "4001-5299", "5301-5999", "50001-65535"]' "$routes"
@@ -54,8 +53,6 @@ if [[ -e "$routing_haproxy" || -e "$routing_nginx" ]]; then
   check test -s "$ntls_nginx"
   check test -s "$ssh_only_nginx"
   check grep -q 'bind :443' "$routing_haproxy"
-  check grep -q 'location = /trojan' "$routing_nginx"
-  check grep -q 'location = /trntls { return 410; }' "$routing_nginx"
   # Plain HTTP/SSH/OpenVPN WebSocket traffic is dispatched by Xray on these
   # ports.  HAProxy is deliberately limited to 443, 2082 and 2086.
   check jq -e '[.inbounds[] | select(.listen == "0.0.0.0") | .port] | index(80) != null' "$backends"
@@ -73,9 +70,9 @@ fi
 if [[ -e "$backends" || -e "$backend_map" ]]; then
   check test -s "$backends"
   check test -s "$backend_map"
-  check jq -e '[.inbounds[].tag] | index("trojan-ws-tls") != null and index("vless-ws-encrypted-ntls") != null' "$backends"
+  check jq -e '[.inbounds[].tag] | index("vless-ws-encrypted-ntls") != null and index("trojan-ws-tls") == null' "$backends"
   check jq -e '[.inbounds[].tag] | index("vless-tls-vision") != null' "$backends"
-  check jq -e '.forbiddenPaths == ["/trtls", "/trntls"]' "$backend_map"
+  check jq -e '.publicRoutes | all(.path != "/trojan")' "$backend_map"
 fi
 
 if [[ "$fail" -ne 0 ]]; then

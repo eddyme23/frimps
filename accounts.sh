@@ -17,7 +17,7 @@ protocol="${1:-}"
 action="${2:-}"
 user="${3:-}"
 days="${4:-}"
-case "$protocol" in vless|trojan) ;; *) die "protocol must be vless or trojan" ;; esac
+[[ "$protocol" == vless ]] || die "protocol must be vless"
 case "$action" in create|renew|delete|list|links|cleanup) ;; *) die "action must be create, renew, delete, list, links, or cleanup" ;; esac
 
 store="$users_dir/$protocol.json"
@@ -57,7 +57,7 @@ case "$action" in
     valid_days "$days" || die "days must be a positive integer"
     jq -e --arg name "$user" '.[] | select(.name == $name)' "$store" >/dev/null && die "account already exists"
     expiry="$(date -u -d "+$days days" +%F)"
-    if [[ "$protocol" == "vless" ]]; then secret="$(cat /proc/sys/kernel/random/uuid)"; field="uuid"; else secret="$(openssl rand -hex 24)"; field="password"; fi
+    secret="$(cat /proc/sys/kernel/random/uuid)"; field="uuid"
     commit "$(jq --arg name "$user" --arg expiresAt "$expiry" --arg field "$field" --arg secret "$secret" '. + [{name:$name, expiresAt:$expiresAt} + {($field):$secret}]' "$store")"
     ;;
   renew)
@@ -76,14 +76,9 @@ case "$action" in
   links)
     entry="$(jq -c --arg name "$user" '.[] | select(.name == $name)' "$store")"
     [[ -n "$entry" ]] || die "account does not exist"
-    if [[ "$protocol" == "trojan" ]]; then
-      password="$(jq -r '.password' <<<"$entry")"
-      printf '\n═══ TROJAN TLS / WEBSOCKET ═══\n\n'
-      printf 'trojan://%s@%s:443?type=ws&security=tls&sni=%s&host=%s&path=%%2Ftrojan#%s-Trojan\n\n' "$password" "$domain" "$domain" "$domain" "$user"
-    else
-      # shellcheck disable=SC1090
-      source "$keys"
-      uuid="$(jq -r '.uuid' <<<"$entry")"
+    # shellcheck disable=SC1090
+    source "$keys"
+    uuid="$(jq -r '.uuid' <<<"$entry")"
       printf '\n═══ VLESS TLS / SHARED PORT 443 ═══\n\n'
       printf 'vless://%s@%s:443?type=tcp&headerType=http&security=tls&encryption=none&host=%s&path=%%2Fvless-tcp&sni=%s#%s-VLESS-TCP-HTTP-TLS\n\n' "$uuid" "$domain" "$domain" "$domain" "$user"
       printf 'vless://%s@%s:443?type=ws&security=tls&encryption=none&sni=%s&host=%s&path=%%2Fvltls#%s-VLESS-WS-TLS\n\n' "$uuid" "$domain" "$domain" "$domain" "$user"
@@ -104,7 +99,6 @@ case "$action" in
         source "$state_dir/reality.env"
         printf 'vless://%s@%s:443?type=tcp&security=reality&encryption=none&flow=xtls-rprx-vision&sni=%s&pbk=%s&sid=%s&fp=%s#%s-VLESS-REALITY-Vision\n\n' "$uuid" "$domain" "$REALITY_SERVER_NAME" "$REALITY_PUBLIC_KEY" "$REALITY_SHORT_ID" "${V6_STORED_REALITY_FINGERPRINT:-chrome}" "$user"
       fi
-    fi
     exit 0
     ;;
 esac

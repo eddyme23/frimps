@@ -31,10 +31,6 @@ if [[ "$mode" == '--live' ]]; then
     check_listener "$port"
   done
   check_cmd openssl s_client -connect "127.0.0.1:443" -servername "$domain" -brief
-  legacy_code="$(curl -ks -o /dev/null -w '%{http_code}' --resolve "$domain:443:127.0.0.1" "https://$domain/trntls" || true)"
-  [[ "$legacy_code" == '410' ]] && pass 'legacy /trntls returns 410' || fail "legacy /trntls returns $legacy_code"
-  legacy_code="$(curl -ks -o /dev/null -w '%{http_code}' --resolve "$domain:443:127.0.0.1" "https://$domain/trtls" || true)"
-  [[ "$legacy_code" == '410' ]] && pass 'legacy /trtls returns 410' || fail "legacy /trtls returns $legacy_code"
 fi
 
 printf '\nResult: %s passed, %s failed\n' "$ok" "$bad"

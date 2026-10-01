@@ -9,7 +9,7 @@ expiry="${3:-}"
 die() { echo "v6 legacy import: $*" >&2; exit 1; }
 [[ "${EUID}" -eq 0 ]] || die "run as root"
 command -v jq >/dev/null 2>&1 || die "jq is required"
-[[ "$protocol" == vless || "$protocol" == trojan ]] || die "protocol must be vless or trojan"
+[[ "$protocol" == vless ]] || die "protocol must be vless"
 [[ -f "$legacy_file" ]] || die "legacy file does not exist"
 [[ "$expiry" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]] || die "expiry must be YYYY-MM-DD"
 
@@ -23,11 +23,7 @@ cleaned="$(mktemp)"
 trap 'rm -f "$cleaned"' EXIT
 sed -E '/^[[:space:]]*(#|\/\/)/d; s/[[:space:]]+#.*$//' "$legacy_file" > "$cleaned"
 
-if [[ "$protocol" == vless ]]; then
-  imported="$(jq -c --arg expiry "$expiry" '[.inbounds[]? | select(.protocol == "vless") | .settings.clients[]? | select((.email // "") != "") | {name:.email,uuid:.id,expiresAt:$expiry}] | unique_by(.name)' "$cleaned")"
-else
-  imported="$(jq -c --arg expiry "$expiry" '[.inbounds[]? | select(.protocol == "trojan") | .settings.clients[]? | select((.email // "") != "") | {name:.email,password:.password,expiresAt:$expiry}] | unique_by(.name)' "$cleaned")"
-fi
+imported="$(jq -c --arg expiry "$expiry" '[.inbounds[]? | select(.protocol == "vless") | .settings.clients[]? | select((.email // "") != "") | {name:.email,uuid:.id,expiresAt:$expiry}] | unique_by(.name)' "$cleaned")"
 
 [[ "$imported" != '[]' ]] || die "no importable $protocol accounts found"
 conflicts="$(jq -r --argjson incoming "$imported" '[.[] as $old | $incoming[] | select(.name == $old.name) | .name] | unique[]?' "$store")"
