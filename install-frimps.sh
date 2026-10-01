@@ -15,6 +15,7 @@ valid_host() { [[ "$1" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]]; }
 valid_token() { [[ "$1" =~ ^[A-Za-z0-9._-]{12,128}$ ]]; }
 random_token() {
   if command -v openssl >/dev/null 2>&1; then openssl rand -hex 16
+  elif [[ -r /proc/sys/kernel/random/uuid ]]; then tr -d '-\n' </proc/sys/kernel/random/uuid
   else od -An -N16 -tx1 /dev/urandom | tr -d ' \n'
   fi
 }
