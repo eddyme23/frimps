@@ -97,7 +97,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
 
 download_release_asset() {
   local owner="$1" repo="$2" asset="$3" destination="$4" meta url digest actual
-  meta="$(mktemp)"; trap 'rm -f "$meta"' RETURN
+  meta="$(mktemp)"
   curl -fsSL --retry 3 "https://api.github.com/repos/$owner/$repo/releases/latest" -o "$meta"
   url="$(jq -r --arg asset "$asset" '.assets[] | select(.name == $asset) | .browser_download_url' "$meta")"
   digest="$(jq -r --arg asset "$asset" '.assets[] | select(.name == $asset) | .digest // empty' "$meta" | sed 's/^sha256://')"
@@ -105,37 +105,41 @@ download_release_asset() {
   curl -fL --retry 3 -o "$destination" "$url"
   actual="$(sha256sum "$destination" | awk '{print $1}')"
   [[ "$actual" == "$digest" ]] || die "SHA-256 verification failed for $asset"
+  rm -f "$meta"
 }
 
 install_xray() {
   command -v xray >/dev/null 2>&1 && return
   note 'Installing verified Xray core release'
-  local temp; temp="$(mktemp -d)"; trap 'rm -rf "$temp"' RETURN
+  local temp; temp="$(mktemp -d)"
   download_release_asset XTLS Xray-core Xray-linux-64.zip "$temp/xray.zip"
   unzip -qq "$temp/xray.zip" -d "$temp"
   install -m 755 "$temp/xray" /usr/local/bin/xray
   xray version >/dev/null
+  rm -rf "$temp"
 }
 
 install_hysteria2() {
   command -v hysteria >/dev/null 2>&1 && return
   note 'Installing verified Hysteria 2 release'
-  local temp; temp="$(mktemp -d)"; trap 'rm -rf "$temp"' RETURN
+  local temp; temp="$(mktemp -d)"
   download_release_asset apernet hysteria hysteria-linux-amd64 "$temp/hysteria"
   install -m 755 "$temp/hysteria" /usr/local/bin/hysteria
   hysteria version >/dev/null
+  rm -rf "$temp"
 }
 
 install_singbox() {
   command -v sing-box >/dev/null 2>&1 && return
   note 'Installing verified sing-box release'
-  local temp version asset; temp="$(mktemp -d)"; trap 'rm -rf "$temp"' RETURN
+  local temp version asset; temp="$(mktemp -d)"
   version="$(curl -fsSL --retry 3 https://api.github.com/repos/SagerNet/sing-box/releases/latest | jq -r '.tag_name')"
   [[ "$version" =~ ^v[0-9] ]] || die 'could not determine sing-box release'
   asset="sing-box_${version#v}_linux_amd64.deb"
   download_release_asset SagerNet sing-box "$asset" "$temp/sing-box.deb"
   dpkg -i "$temp/sing-box.deb" || apt-get -f install -y
   sing-box version >/dev/null
+  rm -rf "$temp"
 }
 
 install_xray
