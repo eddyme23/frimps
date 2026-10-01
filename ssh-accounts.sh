@@ -71,7 +71,7 @@ case "$action" in
     printf '  %bPassword%b   : %b%s%b\n' "$WHITE" "$NC" "$YELLOW" "$password" "$NC"
     printf '  %bExpiry%b     : %b%s%b\n' "$WHITE" "$NC" "$YELLOW" "$expiry" "$NC"
     printf '%b--------------------------------------------------------------%b\n' "$CYAN" "$NC"
-    printf '  SSH Port   : 22, 143\n  Dropbear   : 80\n  SSL/TLS    : 443\n  SSL/WS     : 443\n  WebSocket  : 80, 8080, 8880, 2082, 2086\n  SlowDNS    : 53, 5300\n  UDP Custom : remaining UDP ports\n'
+    printf '  SSH Port   : 22, 143\n  Dropbear   : 80\n  SSL/TLS    : 443\n  SSL/WS     : 443\n  WebSocket  : 80, 8080, 8880, 2082, 2086\n  SlowDNS    : 53, 5300\n  UDP Custom : 1-65535\n'
     printf '%b--------------------------------------------------------------%b\n' "$CYAN" "$NC"
     printf '  %bPayload HTTP:%b\n  %bGET / HTTP/1.1[crlf]Host: %s[crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf][crlf]%b\n\n' "$BOLD" "$NC" "$YELLOW" "$domain" "$NC"
     printf '  %bPayload Enhanced:%b\n  %bGET / HTTP/1.1[crlf]Host: bug.com[crlf][crlf]PATCH / HTTP/1.1[crlf]Host: %s[crlf]Connection: Upgrade[crlf]Upgrade: websocket[crlf][crlf]%b\n' "$BOLD" "$NC" "$YELLOW" "$domain" "$NC"
