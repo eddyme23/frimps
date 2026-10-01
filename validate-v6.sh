@@ -73,6 +73,7 @@ fi
 if [[ -e "$backends" || -e "$backend_map" ]]; then
   check test -s "$backends"
   check test -s "$backend_map"
+  check jq -e '[.routing.rules[] | select(.outboundTag == "blocked") | .protocol?] | index(["bittorrent"]) != null' "$backends"
   check jq -e '[.inbounds[].tag] | index("trojan-ws-tls") != null and index("vless-ws-encrypted-ntls") != null' "$backends"
   check jq -e '[.inbounds[].tag] | index("vless-tls-vision") != null' "$backends"
   check jq -e '.forbiddenPaths == ["/trtls", "/trntls"]' "$backend_map"
