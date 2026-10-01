@@ -115,3 +115,7 @@ if systemctl is-active --quiet ssh-xray-websocket-v6-xray; then
   systemctl restart ssh-xray-websocket-v6-xray
 fi
 echo "$protocol account $action completed: $user"
+if [[ "$action" == create ]]; then
+  echo
+  bash "$(readlink -f -- "$0")" "$protocol" links "$user"
+fi
