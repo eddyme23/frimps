@@ -72,8 +72,6 @@ shared_obfs="$(ask 'Shared Hysteria 1 / ZiVPN obfuscation' 'frimps-9d4a7f21')"
 read -r -s -p 'ZiVPN password (blank = securely generate): ' zivpn_password; printf '\n'
 if [[ -z "$zivpn_password" ]]; then zivpn_password="$(random_token)"; fi
 valid_zivpn_password "$zivpn_password" || die 'ZiVPN password must be 1-64 letters, digits, dot, underscore, or hyphen'
-hy1_initial_user="$(ask 'Initial Hysteria 1 username (uses the ZiVPN password)' 'zivpn')"
-[[ "$hy1_initial_user" =~ ^[A-Za-z0-9_-]{1,32}$ ]] || die 'initial Hysteria 1 username is invalid'
 read -r -s -p 'Hysteria 2 Salamander password (blank = securely generate): ' hy2_password; printf '\n'
 if [[ -z "$hy2_password" ]]; then hy2_password="$(random_token)"; fi
 valid_token "$hy2_password" || die 'Hysteria 2 password must be 12-128 letters, digits, dot, underscore, or hyphen'
@@ -207,7 +205,10 @@ bash "$script_dir/install-remaining-services.sh"
 bash "$script_dir/openvpn-install.sh"
 bash "$script_dir/hysteria1-install.sh"
 bash "$script_dir/hysteria1-accounts.sh" speed 1000 1000
-bash "$script_dir/hysteria1-accounts.sh" create "$hy1_initial_user" 365 "$zivpn_password"
+# Match the GF installation model: Hysteria 1's initial account identifier and
+# its auth string are the same shared ZiVPN password. No separate test user is
+# created during fresh installation.
+bash "$script_dir/hysteria1-accounts.sh" create "$zivpn_password" 365 "$zivpn_password"
 bash "$script_dir/hysteria2-install.sh"
 bash "$script_dir/slowdns-install.sh"
 bash "$script_dir/zivpn-install.sh"
