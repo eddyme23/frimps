@@ -13,6 +13,7 @@ die() { printf 'Frimps installer: %s\n' "$*" >&2; exit 1; }
 note() { printf '\n==> %s\n' "$*"; }
 valid_host() { [[ "$1" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]]; }
 valid_token() { [[ "$1" =~ ^[A-Za-z0-9._-]{12,128}$ ]]; }
+valid_zivpn_password() { [[ "$1" =~ ^[A-Za-z0-9._-]{1,64}$ ]]; }
 random_token() {
   if command -v openssl >/dev/null 2>&1; then openssl rand -hex 16
   elif [[ -r /proc/sys/kernel/random/uuid ]]; then tr -d '-\n' </proc/sys/kernel/random/uuid
@@ -70,7 +71,7 @@ shared_obfs="$(ask 'Shared Hysteria 1 / ZiVPN obfuscation' 'frimps-9d4a7f21')"
 [[ "$shared_obfs" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || die 'obfuscation is invalid'
 read -r -s -p 'ZiVPN password (blank = securely generate): ' zivpn_password; printf '\n'
 if [[ -z "$zivpn_password" ]]; then zivpn_password="$(random_token)"; fi
-valid_token "$zivpn_password" || die 'ZiVPN password must be 12-128 letters, digits, dot, underscore, or hyphen'
+valid_zivpn_password "$zivpn_password" || die 'ZiVPN password must be 1-64 letters, digits, dot, underscore, or hyphen'
 read -r -s -p 'Hysteria 2 Salamander password (blank = securely generate): ' hy2_password; printf '\n'
 if [[ -z "$hy2_password" ]]; then hy2_password="$(random_token)"; fi
 valid_token "$hy2_password" || die 'Hysteria 2 password must be 12-128 letters, digits, dot, underscore, or hyphen'
