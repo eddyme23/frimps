@@ -69,7 +69,7 @@ slowdns_ns="$(ask 'SlowDNS nameserver' "ns-$domain")"
 valid_host "$slowdns_ns" || die 'SlowDNS nameserver is invalid'
 shared_obfs="$(ask 'Shared Hysteria 1 / ZiVPN obfuscation' 'frimps-9d4a7f21')"
 [[ "$shared_obfs" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || die 'obfuscation is invalid'
-read -r -s -p 'ZiVPN password (blank = securely generate): ' zivpn_password; printf '\n'
+read -r -p 'ZiVPN / Hysteria 1 password (shown while typing; blank = securely generate): ' zivpn_password
 if [[ -z "$zivpn_password" ]]; then zivpn_password="$(random_token)"; fi
 valid_zivpn_password "$zivpn_password" || die 'ZiVPN password must be 1-64 letters, digits, dot, underscore, or hyphen'
 read -r -s -p 'Hysteria 2 Salamander password (blank = securely generate): ' hy2_password; printf '\n'
