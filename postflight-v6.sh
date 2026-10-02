@@ -42,6 +42,7 @@ config_check grep -qx 'dev tun-ovpn-udp' /etc/openvpn/server/frimps-udp.conf
 config_check grep -qx 'server 10.9.0.0 255.255.255.0' /etc/openvpn/server/frimps-udp.conf
 config_check grep -qx 'push "dhcp-option DNS 1.1.1.1"' /etc/openvpn/server/frimps-tcp.conf
 config_check grep -qx 'push "dhcp-option DNS 1.0.0.1"' /etc/openvpn/server/frimps-tcp.conf
+config_check grep -qx 'TIMEOUTclose = 0' /etc/openvpn/frimps-stunnel.conf
 config_check test "$(sysctl -n net.ipv4.ip_forward 2>/dev/null || true)" = 1
 config_check nft list table ip frimps_v6_ovpn
 systemctl is-active --quiet certbot.timer && printf '[ok] service certbot.timer\n' || { printf '[fail] service certbot.timer\n' >&2; failed=1; }

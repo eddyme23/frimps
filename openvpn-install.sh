@@ -118,6 +118,13 @@ foreground = yes
 pid = /run/frimps-openvpn-stunnel.pid
 cert = $cert_file
 key = $key_file
+client = no
+syslog = no
+debug = 0
+output = /dev/null
+socket = l:TCP_NODELAY=1
+socket = r:TCP_NODELAY=1
+TIMEOUTclose = 0
 [openvpn]
 accept = 0.0.0.0:8433
 connect = 127.0.0.1:1194
