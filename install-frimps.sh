@@ -206,6 +206,10 @@ V6_CONFIRM_TEST_VPS=YES V6_ALLOW_ACTIVE_V6=YES V6_FRESH_INSTALL=YES bash "$scrip
 
 note 'Configuring OpenVPN, WireGuard, UDP services, and Hysteria'
 bash "$script_dir/install-remaining-services.sh"
+# Hysteria 1 deliberately requires the ordered UDP routing unit.  Start that
+# prerequisite immediately after staging it, before creating the first H1
+# account (which enables and starts the H1 service).
+systemctl enable --now ssh-xray-websocket-v6-udp-routing.service
 bash "$script_dir/openvpn-install.sh"
 bash "$script_dir/hysteria1-install.sh"
 bash "$script_dir/hysteria1-accounts.sh" speed 1000 1000
