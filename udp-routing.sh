@@ -16,7 +16,7 @@ sync_routes_metadata() {
   local routes="$state_dir/routes.json" tmp
   [[ -s "$routes" ]] && command -v jq >/dev/null 2>&1 || return 0
   tmp="$(mktemp "$state_dir/.routes.json.XXXXXX")"
-  jq '.udpCustomRanges = ["1-52", "54-442", "444-1193", "1195-3999", "4001-5299", "5301-5999", "50001-65535"]' "$routes" > "$tmp"
+  jq '.udpCustomRanges = ["1-52", "54-442", "444-1193", "1195-3999", "4001-5299", "5300-5999", "50001-65535"]' "$routes" > "$tmp"
   chmod 600 "$tmp"
   mv "$tmp" "$routes"
 }
@@ -34,7 +34,7 @@ nft_apply() {
 table ip frimps_v6_udp {
  chain prerouting {
   type nat hook prerouting priority dstnat; policy accept;
-  iifname "$public_if" udp dport { 53, 5300, 443, 1194, 4000 } accept
+  iifname "$public_if" udp dport { 53, 443, 1194, 4000 } accept
   iifname "$public_if" udp dport 6000-19999 dnat to :5667
   iifname "$public_if" udp dport 20000-50000 dnat to :36712
   iifname "$public_if" udp dport 1-52 dnat to :36717
@@ -42,7 +42,7 @@ table ip frimps_v6_udp {
   iifname "$public_if" udp dport 444-1193 dnat to :36717
   iifname "$public_if" udp dport 1195-3999 dnat to :36717
   iifname "$public_if" udp dport 4001-5299 dnat to :36717
-  iifname "$public_if" udp dport 5301-5999 dnat to :36717
+  iifname "$public_if" udp dport 5300-5999 dnat to :36717
   iifname "$public_if" udp dport 50001-65535 dnat to :36717
  }
 }
@@ -68,7 +68,6 @@ apply() {
   # Direct listeners must ACCEPT in nat/PREROUTING, not RETURN: a RETURN would
   # continue into a legacy catch-all DNAT rule after this chain.
   add "$chain" --dport 53 -j ACCEPT
-  add "$chain" --dport 5300 -j ACCEPT
   add "$chain" --dport 443 -j ACCEPT
   add "$chain" --dport 1194 -j ACCEPT
   add "$chain" --dport 4000 -j ACCEPT
@@ -76,7 +75,7 @@ apply() {
   add "$chain" --dport 20000:50000 -j DNAT --to-destination :36712
 
   # UDP Custom is strictly the complement of the dedicated routes above.
-  for range in 1:52 54:442 444:1193 1195:3999 4001:5299 5301:5999 50001:65535; do
+  for range in 1:52 54:442 444:1193 1195:3999 4001:5299 5300:5999 50001:65535; do
     add "$chain" --dport "$range" -j DNAT --to-destination :36717
   done
   install -d -m 700 "$state_dir"

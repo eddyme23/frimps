@@ -55,7 +55,7 @@ show_ports() {
   port_row 'SSH WS:' '2082, 2086' 'BadVPN:' '7300'
   port_row 'Xray NTLS:' '80, 8080, 8880' 'Hysteria 2:' '443 UDP'
   port_row 'Hysteria 1:' '20000-50000' 'ZiVPN:' '6000-19999'
-  port_row 'UDPCustom:' '1-65535' 'SlowDNS:' '53, 5300'
+  port_row 'UDPCustom:' '1-65535' 'SlowDNS:' '53 UDP'
   port_row 'OpenVPN:' '1194 TCP/UDP' 'OVPN SSL:' '8433'
   port_row 'OVPN WS:' '80, 8080, 8880' 'WireGuard:' '4000 UDP'
   printf '%b-------------------------- SYSTEM RESOURCES -------------------------%b\n' "$RED" "$NC"

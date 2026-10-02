@@ -7,7 +7,11 @@ install -d -m 700 /etc/slowdns
 cat >/etc/slowdns/server.key <<'EOF'
 819d82813183e4be3ca1ad74387e47c0c993b81c601b2d1473a3f47731c404ae
 EOF
+cat >/etc/slowdns/server.pub <<'EOF'
+7fbd1f8aa0abfe15a7903e837f78aba39cf61d36f183bd604daa2fe4ef3b7b59
+EOF
 chmod 600 /etc/slowdns/server.key
+chmod 644 /etc/slowdns/server.pub
 tmp="$(mktemp)"; trap 'rm -f "$tmp"' EXIT
 url='https://raw.githubusercontent.com/fisabiliyusri/SLDNS/b667b0d15be0589cd89cd2f997873296ceb07ce2/slowdns/sldns-server'
 hash='ffb4d459fe9a028f7ff4b49c4c88f2f3c5f1f78ac964fb8ca57e2dfaeb457add'
@@ -26,3 +30,5 @@ WantedBy=multi-user.target
 EOF
 systemctl daemon-reload
 echo 'SlowDNS configured on UDP 53 to Dropbear TCP 143.'
+echo "Nameserver: $ns"
+echo "Public key: $(cat /etc/slowdns/server.pub)"

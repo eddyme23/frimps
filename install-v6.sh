@@ -39,7 +39,7 @@ cat > "$state_dir/routes.json" <<EOF
   },
   "ssh": {"payloadPorts": [80, 8080, 8880], "wsNtlsPorts": [80, 8080, 8880, 2082, 2086], "tlsPort": 443},
   "udpPriority": ["slowdns", "hysteria2", "openvpn", "wireguard", "zivpn", "hysteria1", "udp-custom"],
-  "udpCustomRanges": ["1-52", "54-442", "444-1193", "1195-3999", "4001-5299", "5301-5999", "50001-65535"]
+  "udpCustomRanges": ["1-52", "54-442", "444-1193", "1195-3999", "4001-5299", "5300-5999", "50001-65535"]
 }
 EOF
 chmod 600 "$state_dir/routes.json"

@@ -36,6 +36,8 @@ for unit in \
 done
 for port in 80 443 8080 8880 2082 2086 1194 8433 10081; do listener_check tcp "$port"; done
 for port in 53 443 1194 4000 5667 36712 36717; do listener_check udp "$port"; done
+config_check grep -qx '7fbd1f8aa0abfe15a7903e837f78aba39cf61d36f183bd604daa2fe4ef3b7b59' /etc/slowdns/server.pub
+config_check grep -q -- '-udp :53 .* 127.0.0.1:143' /etc/systemd/system/frimps-slowdns.service
 config_check grep -qx 'dev tun-ovpn-tcp' /etc/openvpn/server/frimps-tcp.conf
 config_check grep -qx 'server 10.8.0.0 255.255.255.0' /etc/openvpn/server/frimps-tcp.conf
 config_check grep -qx 'dev tun-ovpn-udp' /etc/openvpn/server/frimps-udp.conf
