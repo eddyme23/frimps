@@ -17,6 +17,9 @@ install -m 700 "$script_dir/udp-routing.sh" "$helper_dir/ssh-xray-websocket-v6-u
 install -m 700 "$script_dir/hysteria1-render.sh" "$helper_dir/ssh-xray-websocket-v6-hysteria1-render"
 install -m 700 "$script_dir/hysteria2-render.sh" "$helper_dir/ssh-xray-websocket-v6-hysteria2-render"
 install -m 700 "$script_dir/wireguard-accounts.sh" "$helper_dir/ssh-xray-websocket-v6-wireguard-accounts"
+if [[ -f /etc/wireguard/wg0.conf ]]; then
+  "$helper_dir/ssh-xray-websocket-v6-wireguard-accounts" migrate-dns
+fi
 ln -sfn "$runtime_dir/menu-v6.sh" /usr/local/bin/ssh-xray-websocket-v6-menu
 ln -sfn "$runtime_dir/menu-v6.sh" /usr/local/bin/menu
 bash "$runtime_dir/apply-service-hardening.sh"

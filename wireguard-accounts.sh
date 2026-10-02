@@ -55,7 +55,7 @@ render_client() {
 [Interface]
 PrivateKey = $private
 Address = $address/32
-DNS = 1.1.1.1
+DNS = 1.1.1.1, 1.0.0.1
 
 [Peer]
 PublicKey = $server_pub
@@ -87,6 +87,18 @@ wireguard_link() {
   allowed_enc="$(jq -nr --arg v "${allowed:-0.0.0.0/0}" '$v|@uri')"
   printf 'wireguard://%s@%s?address=%s&mtu=%s&publickey=%s&dns=%s&allowedips=%s&keepalive=%s#Wireguard-%s\n' "$private_enc" "${client_endpoint:-$endpoint:4000}" "$ip_enc" "${mtu:-1420}" "$public_enc" "$dns_enc" "$allowed_enc" "${keepalive:-0}" "$name"
 }
+migrate_dns() {
+  local client temp
+  shopt -s nullglob
+  for client in "$client_dir"/*.conf; do
+    grep -qx 'DNS = 1.1.1.1' "$client" || continue
+    temp="$(mktemp "${client}.XXXXXX")"
+    sed 's/^DNS = 1\.1\.1\.1$/DNS = 1.1.1.1, 1.0.0.1/' "$client" > "$temp"
+    chmod 600 "$temp"
+    mv -f "$temp" "$client"
+    printf 'Updated WireGuard DNS fallback: %s\n' "$client"
+  done
+}
 
 init
 action="${1:-}"
@@ -114,7 +126,8 @@ case "$action" in
   list) jq -r '.[] | [.name,.ip,.expiresAt] | @tsv' "$store" | column -t -N NAME,ADDRESS,EXPIRES ;;
   config) name="${2:-}"; [[ -f "$client_dir/$name.conf" ]] || die 'account/config not found'; cat "$client_dir/$name.conf" ;;
   link) name="${2:-}"; [[ -f "$client_dir/$name.conf" ]] || die 'account/config not found'; wireguard_link "$name" ;;
+  migrate-dns) migrate_dns ;;
   cleanup)
     today="$(date -u +%F)"; jq -r --arg d "$today" '.[] | select(.expiresAt < $d) | .name' "$store" | while read -r name; do [[ -n "$name" ]] && "$0" delete "$name"; done ;;
-  *) die 'usage: wireguard-accounts.sh {create NAME DAYS|renew NAME DAYS|delete NAME|list|config NAME|link NAME|cleanup}' ;;
+  *) die 'usage: wireguard-accounts.sh {create NAME DAYS|renew NAME DAYS|delete NAME|list|config NAME|link NAME|migrate-dns|cleanup}' ;;
 esac

@@ -44,9 +44,16 @@ config_check grep -qx 'dev tun-ovpn-udp' /etc/openvpn/server/frimps-udp.conf
 config_check grep -qx 'server 10.9.0.0 255.255.255.0' /etc/openvpn/server/frimps-udp.conf
 config_check grep -qx 'push "dhcp-option DNS 1.1.1.1"' /etc/openvpn/server/frimps-tcp.conf
 config_check grep -qx 'push "dhcp-option DNS 1.0.0.1"' /etc/openvpn/server/frimps-tcp.conf
+if compgen -G '/etc/wireguard/clients/*.conf' >/dev/null; then
+  config_check grep -Rqx 'DNS = 1.1.1.1, 1.0.0.1' /etc/wireguard/clients
+fi
 config_check grep -qx 'TIMEOUTclose = 0' /etc/openvpn/frimps-stunnel.conf
 config_check test "$(sysctl -n net.ipv4.ip_forward 2>/dev/null || true)" = 1
 config_check nft list table ip frimps_v6_ovpn
+domain="$(jq -r '.primaryDomain // empty' /etc/ssh-xray-websocket-v6/routes.json 2>/dev/null || true)"
+if [[ -n "$domain" ]] && getent ahostsv6 "$domain" 2>/dev/null | grep -q .; then
+  printf '[warn] %s publishes IPv6; keep UDP range protocol clients on its IPv4 A record until IPv6 UDP routing is configured.\n' "$domain" >&2
+fi
 systemctl is-active --quiet certbot.timer && printf '[ok] service certbot.timer\n' || { printf '[fail] service certbot.timer\n' >&2; failed=1; }
 [[ $failed -eq 0 ]] || exit 1
 printf 'Frimps post-install verification passed.\n'
