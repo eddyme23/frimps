@@ -59,7 +59,7 @@ cat > /etc/openvpn/server/tcp.conf.v6 <<'EOF'
 local 127.0.0.1
 port 11940
 proto tcp-server
-dev tun
+dev tun-ovpn-tcp
 topology subnet
 server 10.8.0.0 255.255.255.0
 persist-key
@@ -69,7 +69,7 @@ EOF
 cat > /etc/openvpn/server/udp.conf.v6 <<'EOF'
 port 1194
 proto udp
-dev tun
+dev tun-ovpn-udp
 topology subnet
 server 10.9.0.0 255.255.255.0
 persist-key

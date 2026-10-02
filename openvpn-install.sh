@@ -45,11 +45,12 @@ cat > /etc/openvpn/server/frimps-tcp.conf <<'EOF'
 local 127.0.0.1
 port 11940
 proto tcp-server
-dev tun
+dev tun-ovpn-tcp
 topology subnet
 server 10.8.0.0 255.255.255.0
-push "redirect-gateway def1"
+push "redirect-gateway def1 bypass-dhcp"
 push "dhcp-option DNS 1.1.1.1"
+push "dhcp-option DNS 1.0.0.1"
 ca /etc/openvpn/easy-rsa/pki/ca.crt
 cert /etc/openvpn/easy-rsa/pki/issued/server.crt
 key /etc/openvpn/easy-rsa/pki/private/server.key
@@ -65,7 +66,13 @@ keepalive 10 60
 persist-key
 persist-tun
 EOF
-sed 's/^local 127.0.0.1$/port 1194/; s/^port 11940$//' /etc/openvpn/server/frimps-tcp.conf | sed 's/proto tcp-server/proto udp/' > /etc/openvpn/server/frimps-udp.conf
+sed \
+  -e 's/^local 127.0.0.1$/port 1194/' \
+  -e 's/^port 11940$//' \
+  -e 's/^proto tcp-server$/proto udp/' \
+  -e 's/^dev tun-ovpn-tcp$/dev tun-ovpn-udp/' \
+  -e 's/^server 10\.8\.0\.0 255\.255\.255\.0$/server 10.9.0.0 255.255.255.0/' \
+  /etc/openvpn/server/frimps-tcp.conf > /etc/openvpn/server/frimps-udp.conf
 chmod 600 /etc/openvpn/server/frimps-*.conf
 
 # TunnelGuard/OpenVPN3 uses one universal TCP profile; its server page supplies
@@ -121,7 +128,8 @@ for type in tcp udp; do
   cat > "/etc/systemd/system/frimps-openvpn-$type.service" <<EOF
 [Unit]
 Description=frimps OpenVPN $type
-After=network-online.target
+After=network-online.target frimps-openvpn-nat.service
+Requires=frimps-openvpn-nat.service
 [Service]
 ExecStart=/usr/sbin/openvpn --config /etc/openvpn/server/frimps-$type.conf
 Restart=on-failure
@@ -174,6 +182,7 @@ cat > /etc/systemd/system/frimps-openvpn-nat.service <<'EOF'
 [Unit]
 Description=frimps OpenVPN forwarding and NAT
 After=network-online.target
+Before=frimps-openvpn-tcp.service frimps-openvpn-udp.service frimps-openvpn-gateway.service
 [Service]
 Type=oneshot
 ExecStart=/usr/local/libexec/ssh-xray-websocket-v6-openvpn-nat apply
@@ -189,6 +198,11 @@ iface="$(ip -4 route show default | awk '/default/ {print $5;exit}')"
 case "${1:-}" in
  apply) sysctl -q -w net.ipv4.ip_forward=1; nft delete table ip frimps_v6_ovpn 2>/dev/null||true; nft -f - <<EOF_NFT
 table ip frimps_v6_ovpn {
+ chain forward {
+  type filter hook forward priority filter; policy accept;
+  ip saddr { 10.8.0.0/24, 10.9.0.0/24 } oifname "$iface" accept
+  iifname "$iface" ip daddr { 10.8.0.0/24, 10.9.0.0/24 } ct state established,related accept
+ }
  chain postrouting {
   type nat hook postrouting priority srcnat; policy accept;
   ip saddr { 10.8.0.0/24, 10.9.0.0/24 } oifname "$iface" masquerade

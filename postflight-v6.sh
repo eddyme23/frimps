@@ -17,6 +17,11 @@ listener_check() {
   else printf '[fail] %s listener %s\n' "$proto" "$port" >&2; failed=1
   fi
 }
+config_check() {
+  if "$@"; then printf '[ok] %s\n' "$*"
+  else printf '[fail] %s\n' "$*" >&2; failed=1
+  fi
+}
 
 for unit in \
   ssh-xray-websocket-v6-dropbear ssh-xray-websocket-v6-sshws \
@@ -31,6 +36,14 @@ for unit in \
 done
 for port in 80 443 8080 8880 2082 2086 1194 8433 10081; do listener_check tcp "$port"; done
 for port in 53 443 1194 4000 5667 36712 36717; do listener_check udp "$port"; done
+config_check grep -qx 'dev tun-ovpn-tcp' /etc/openvpn/server/frimps-tcp.conf
+config_check grep -qx 'server 10.8.0.0 255.255.255.0' /etc/openvpn/server/frimps-tcp.conf
+config_check grep -qx 'dev tun-ovpn-udp' /etc/openvpn/server/frimps-udp.conf
+config_check grep -qx 'server 10.9.0.0 255.255.255.0' /etc/openvpn/server/frimps-udp.conf
+config_check grep -qx 'push "dhcp-option DNS 1.1.1.1"' /etc/openvpn/server/frimps-tcp.conf
+config_check grep -qx 'push "dhcp-option DNS 1.0.0.1"' /etc/openvpn/server/frimps-tcp.conf
+config_check test "$(sysctl -n net.ipv4.ip_forward 2>/dev/null || true)" = 1
+config_check nft list table ip frimps_v6_ovpn
 systemctl is-active --quiet certbot.timer && printf '[ok] service certbot.timer\n' || { printf '[fail] service certbot.timer\n' >&2; failed=1; }
 [[ $failed -eq 0 ]] || exit 1
 printf 'Frimps post-install verification passed.\n'
