@@ -54,6 +54,14 @@ source /etc/os-release
 
 note 'Frimps fresh-server setup'
 printf 'Cloudflare DNS validation is used so the default certificate includes a wildcard name.\n\n'
+# A retry after an interrupted fresh installation must preserve generated UDP
+# credentials when the corresponding prompt is left blank.
+if [[ -r "$state_dir/service-options.env" ]]; then
+  # shellcheck disable=SC1090
+  source "$state_dir/service-options.env"
+fi
+previous_zivpn_password="${V6_ZIVPN_PASSWORD:-}"
+previous_hy2_password="${V6_HYSTERIA2_OBFS:-}"
 domain="$(ask 'Primary domain' '')"
 valid_host "$domain" || die 'primary domain is invalid'
 cert_names="$(ask 'Certificate names (comma-separated)' "$domain,*.$domain")"
@@ -67,13 +75,13 @@ valid_token "$cf_token" || die 'Cloudflare API token is invalid'
 
 slowdns_ns="$(ask 'SlowDNS nameserver' "ns-$domain")"
 valid_host "$slowdns_ns" || die 'SlowDNS nameserver is invalid'
-shared_obfs="$(ask 'Shared Hysteria 1 / ZiVPN obfuscation' 'frimps-9d4a7f21')"
+shared_obfs="$(ask 'Shared Hysteria 1 / ZiVPN obfuscation' "${V6_HYSTERIA1_OBFS:-frimps-9d4a7f21}")"
 [[ "$shared_obfs" =~ ^[A-Za-z0-9._-]{1,64}$ ]] || die 'obfuscation is invalid'
 read -r -p 'ZiVPN / Hysteria 1 password (shown while typing; blank = securely generate): ' zivpn_password
-if [[ -z "$zivpn_password" ]]; then zivpn_password="$(random_token)"; fi
+if [[ -z "$zivpn_password" ]]; then zivpn_password="${previous_zivpn_password:-$(random_token)}"; fi
 valid_zivpn_password "$zivpn_password" || die 'ZiVPN password must be 1-64 letters, digits, dot, underscore, or hyphen'
 read -r -s -p 'Hysteria 2 Salamander password (blank = securely generate): ' hy2_password; printf '\n'
-if [[ -z "$hy2_password" ]]; then hy2_password="$(random_token)"; fi
+if [[ -z "$hy2_password" ]]; then hy2_password="${previous_hy2_password:-$(random_token)}"; fi
 valid_token "$hy2_password" || die 'Hysteria 2 password must be 12-128 letters, digits, dot, underscore, or hyphen'
 reality_target="$(ask 'REALITY target' 'www.cloudflare.com:443')"
 [[ "$reality_target" =~ ^[A-Za-z0-9.-]+:[0-9]{1,5}$ ]] || die 'REALITY target must be hostname:port'
@@ -216,7 +224,11 @@ bash "$script_dir/hysteria1-accounts.sh" speed 1000 1000
 # Match the GF installation model: Hysteria 1's initial account identifier and
 # its auth string are the same shared ZiVPN password. No separate test user is
 # created during fresh installation.
-bash "$script_dir/hysteria1-accounts.sh" create "$zivpn_password" 365 "$zivpn_password"
+if ! jq -e --arg name "$zivpn_password" '.[] | select(.name == $name)' "$state_dir/hysteria1-users.json" >/dev/null; then
+  bash "$script_dir/hysteria1-accounts.sh" create "$zivpn_password" 365 "$zivpn_password"
+else
+  echo 'Initial Hysteria 1 account already exists; preserving it.'
+fi
 bash "$script_dir/hysteria2-install.sh"
 if ! jq -e 'length > 0' "$state_dir/hysteria2-users.json" >/dev/null; then
   bash "$script_dir/hysteria2-accounts.sh" create default 365
