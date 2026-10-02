@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Managed WireGuard peer lifecycle. Generated client .conf files are the
-# authoritative client artifact; the wireguard:// URI is intentionally absent.
+# authoritative client artifact; wireguard:// links mirror their client settings.
 set -euo pipefail
 
 state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"
@@ -67,15 +67,25 @@ EOF
 }
 wireguard_link() {
   local name="$1" row private ip server_pub private_enc ip_enc public_enc
+  local client_config address dns allowed keepalive mtu client_endpoint dns_enc allowed_enc
   row="$(jq -c --arg n "$name" '.[] | select(.name == $n)' "$store")"
   [[ -n "$row" ]] || die 'account not found'
-  private="$(awk -F ' = ' '/^PrivateKey = / {print $2; exit}' "$client_dir/$name.conf")"
+  client_config="$client_dir/$name.conf"
+  private="$(awk -F ' = ' '/^PrivateKey = / {print $2; exit}' "$client_config")"
   ip="$(jq -r '.ip' <<<"$row")"
-  server_pub="$(cat "$state_dir/wireguard-server-public.key")"
+  server_pub="$(awk -F ' = ' '/^PublicKey = / {print $2; exit}' "$client_config")"
+  address="$(awk -F ' = ' '/^Address = / {print $2; exit}' "$client_config")"
+  dns="$(awk -F ' = ' '/^DNS = / {print $2; exit}' "$client_config")"
+  allowed="$(awk -F ' = ' '/^AllowedIPs = / {print $2; exit}' "$client_config")"
+  keepalive="$(awk -F ' = ' '/^PersistentKeepalive = / {print $2; exit}' "$client_config")"
+  mtu="$(awk -F ' = ' '/^MTU = / {print $2; exit}' "$client_config")"
+  client_endpoint="$(awk -F ' = ' '/^Endpoint = / {print $2; exit}' "$client_config")"
   private_enc="$(jq -nr --arg v "$private" '$v|@uri')"
-  ip_enc="$(jq -nr --arg v "$ip/32" '$v|@uri')"
+  ip_enc="$(jq -nr --arg v "${address:-$ip/32}" '$v|@uri')"
   public_enc="$(jq -nr --arg v "$server_pub" '$v|@uri')"
-  printf 'wireguard://%s@%s:4000?address=%s&mtu=1420&publickey=%s#Wireguard-%s\n' "$private_enc" "$endpoint" "$ip_enc" "$public_enc" "$name"
+  dns_enc="$(jq -nr --arg v "$dns" '$v|@uri')"
+  allowed_enc="$(jq -nr --arg v "${allowed:-0.0.0.0/0}" '$v|@uri')"
+  printf 'wireguard://%s@%s?address=%s&mtu=%s&publickey=%s&dns=%s&allowedips=%s&keepalive=%s#Wireguard-%s\n' "$private_enc" "${client_endpoint:-$endpoint:4000}" "$ip_enc" "${mtu:-1420}" "$public_enc" "$dns_enc" "$allowed_enc" "${keepalive:-0}" "$name"
 }
 
 init
