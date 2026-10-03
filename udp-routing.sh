@@ -67,16 +67,16 @@ apply() {
 
   # Direct listeners must ACCEPT in nat/PREROUTING, not RETURN: a RETURN would
   # continue into a legacy catch-all DNAT rule after this chain.
-  add "$chain" --dport 53 -j ACCEPT
-  add "$chain" --dport 443 -j ACCEPT
-  add "$chain" --dport 1194 -j ACCEPT
-  add "$chain" --dport 4000 -j ACCEPT
-  add "$chain" --dport 6000:19999 -j DNAT --to-destination :5667
-  add "$chain" --dport 20000:50000 -j DNAT --to-destination :36712
+  add "$chain" -p udp --dport 53 -j ACCEPT
+  add "$chain" -p udp --dport 443 -j ACCEPT
+  add "$chain" -p udp --dport 1194 -j ACCEPT
+  add "$chain" -p udp --dport 4000 -j ACCEPT
+  add "$chain" -p udp --dport 6000:19999 -j DNAT --to-destination :5667
+  add "$chain" -p udp --dport 20000:50000 -j DNAT --to-destination :36712
 
   # UDP Custom is strictly the complement of the dedicated routes above.
   for range in 1:52 54:442 444:1193 1195:3999 4001:5299 5300:5999 50001:65535; do
-    add "$chain" --dport "$range" -j DNAT --to-destination :36717
+    add "$chain" -p udp --dport "$range" -j DNAT --to-destination :36717
   done
   install -d -m 700 "$state_dir"
   printf 'interface=%s\nchain=%s\n' "$public_if" "$chain" > "$state_dir/udp-routing.env"
