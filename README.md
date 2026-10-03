@@ -1,7 +1,7 @@
 
 ## Frimps Multi Script installation
 
-Recommended OS : **Debian 12** VPS, logged in as `root`.
+Recommended OS : **Debian 12** , logged in as `root`.
 
 Run this one command on VPS:
 
