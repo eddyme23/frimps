@@ -3,6 +3,12 @@ set -euo pipefail
 state_dir="${V6_STATE_DIR:-/etc/ssh-xray-websocket-v6}"; opts="$state_dir/service-options.env"
 [[ $EUID -eq 0 ]] || { echo 'run as root' >&2; exit 1; }; [[ -r "$opts" ]] && source "$opts"
 ns="${V6_SLOWDNS_NS:-}"; [[ "$ns" =~ ^[A-Za-z0-9.-]+$ ]] || { echo 'configure a SlowDNS nameserver first' >&2; exit 1; }
+# Bind the ingress interface address, leaving systemd-resolved's loopback
+# DNS stubs available for the server's own DNS lookups.
+ingress_if="$(ip -4 route show default | awk 'NR == 1 {for (i=1;i<=NF;i++) if ($i == "dev") {print $(i+1); exit}}')"
+[[ -n "$ingress_if" ]] || { echo 'cannot determine SlowDNS ingress interface' >&2; exit 1; }
+listen_ip="$(ip -4 -o addr show dev "$ingress_if" scope global | awk 'NR == 1 {split($4,a,"/"); print a[1]}')"
+[[ "$listen_ip" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'cannot determine SlowDNS ingress IPv4 address' >&2; exit 1; }
 install -d -m 700 /etc/slowdns
 cat >/etc/slowdns/server.key <<'EOF'
 819d82813183e4be3ca1ad74387e47c0c993b81c601b2d1473a3f47731c404ae
@@ -23,7 +29,7 @@ Description=frimps SlowDNS to Dropbear bridge
 After=network-online.target ssh-xray-websocket-v6-dropbear.service ssh-xray-websocket-v6-udp-routing.service
 Requires=ssh-xray-websocket-v6-dropbear.service ssh-xray-websocket-v6-udp-routing.service
 [Service]
-ExecStart=/etc/slowdns/sldns-server -udp :53 -privkey-file /etc/slowdns/server.key $ns 127.0.0.1:143
+ExecStart=/etc/slowdns/sldns-server -udp $listen_ip:53 -privkey-file /etc/slowdns/server.key $ns 127.0.0.1:143
 Restart=on-failure
 [Install]
 WantedBy=multi-user.target
