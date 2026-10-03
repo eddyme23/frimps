@@ -15,6 +15,12 @@ trap 'if [[ "$activated" -eq 0 ]]; then V6_CONFIRM_STOP_BACKENDS=YES "$script_di
 
 if [[ "${V6_ALLOW_ACTIVE_V6:-}" == YES ]]; then
   echo 'Refreshing an explicitly confirmed active v6 deployment.'
+  # A fresh-installer retry can reach this point after a previous attempt
+  # already started the private Frimps backends.  They own ports such as
+  # 127.0.0.1:143, so stop only those managed units before start-local-
+  # backends performs its port-conflict check.  Public SSH on port 22 is not
+  # touched.
+  V6_CONFIRM_STOP_BACKENDS=YES "$script_dir/stop-local-backends.sh"
 else
   "$script_dir/preflight-cutover.sh"
 fi
