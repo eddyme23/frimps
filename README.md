@@ -9,4 +9,3 @@ Run this one command on VPS:
 bash <(curl -fsSL https://raw.githubusercontent.com/eddyme23/frimps/main/install-frimps.sh)
 ```
 
-
